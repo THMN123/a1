@@ -1,0 +1,638 @@
+# A1 Services App – Full Build Blueprint
+
+## Product Vision
+
+**A1 Services** is *"The World’s Biggest Mall in Your Pocket"* — a campus-first, Africa-scalable super-app that eliminates queues, reduces vendor fees, and brings offline local businesses online through pre-ordering, real-time visibility, and fair commissions.
+
+Core promise:
+
+> *Eliminating consumer stress, one pre-order at a time.*
+
+---
+
+## Core User Types
+
+### 1. Customers (Students, Workers, General Public)
+
+* Discover food, shops, and services
+* Pre-order & pay (cash, mobile money, card)
+* Track queue time & order status
+* Earn rewards & discounts
+
+### 2. Vendors (Food stalls, shops, service providers)
+
+* Receive & manage orders
+* Update stock & prep times
+* Accept payments
+* Gain digital visibility with **only 5% commission**
+
+### 3. Admin (A1 Operations)
+
+* Vendor onboarding & verification
+* Analytics & reporting
+* Promotions & feature flags
+* Quality assurance & dispute handling
+
+---
+
+## MVP FEATURES (Phase 1 – Campus Launch)
+
+### Customer App
+
+* User registration (phone/email)
+* Location-based vendor discovery
+* Vendor profiles (menu, prices, prep time)
+* Pre-ordering (pickup-first)
+* Order status tracking
+* Notifications (order ready, delays)
+* Cashless + cash-on-pickup payments
+* Basic loyalty points
+
+### Vendor App / Vendor Mode
+
+* Vendor onboarding
+* Menu & stock management
+* Order acceptance/rejection
+* Prep-time adjustment
+* Daily sales summary
+
+### Admin Panel (Web)
+
+* Vendor approval
+* Commission management (5%)
+* Order monitoring
+* Push notification control
+
+---
+
+## PHASED FEATURE ROADMAP
+
+### Phase 2 – Monetization & Retention
+
+* Premium subscription (M12/week)
+* Priority order handling
+* Exclusive discounts
+* Advanced loyalty (streaks, challenges)
+* Group orders
+
+### Phase 3 – Expansion
+
+* Delivery integration (M5–M15 per order)
+* Services beyond food (laundry, tech repair, transport)
+* AI-based vendor quality scoring
+* AR campus promos (Campus Fuel Frenzy style)
+
+---
+
+## GAMIFICATION & LOYALTY (A1 DNA)
+
+* Daily meal streaks
+* Campus leaderboards
+* Referral rewards (M5 off)
+* Vendor-sponsored challenges
+* Seasonal campaigns ("A1 Seasons")
+
+---
+
+## MONETIZATION MODEL
+
+1. **5% Vendor Commission**
+2. **Premium Subscriptions** (M12/week)
+3. **Delivery Fees** (Phase 3)
+4. **Sponsored Vendor Placement**
+5. **Data Insights (B2B – later phase)**
+
+---
+
+## TECH STACK (RECOMMENDED)
+
+### Frontend
+
+* **Flutter** (single codebase for iOS & Android)
+* Responsive UI (student-first, low data usage)
+
+### Backend
+
+* **Firebase / Supabase (MVP)**
+* Node.js + Express (scaling phase)
+* REST + WebSockets (real-time orders)
+
+### Payments
+
+* Mobile Money (EcoCash / M-Pesa style)
+* Card payments
+* Cash-on-pickup support
+
+### Notifications
+
+* Firebase Cloud Messaging
+
+---
+
+## DATA MODELS (CORE)
+
+### User
+
+* id
+* role (customer/vendor)
+* phone/email
+* wallet
+* loyalty_points
+
+### Vendor
+
+* id
+* location
+* commission_rate
+* menu
+* open_status
+
+### Order
+
+* id
+* user_id
+* vendor_id
+* items
+* status
+* payment_method
+* prep_time
+
+---
+
+## UX PRINCIPLES
+
+* 3 taps to order
+* Zero learning curve
+* Offline-friendly
+* Dark-mode ready
+* Local language support (future)
+
+---
+
+## LAUNCH STRATEGY (NUL CAMPUS)
+
+* Pilot vendors: TN The Nile, Mzalas, OB Joint, VTech
+* Residence hall activations
+* Skip-the-Queue free trials
+* Influencer-led onboarding
+
+---
+
+## SUCCESS METRICS
+
+* Daily active users
+* Orders per user/week
+* Vendor retention
+* Queue-time reduction
+* Subscription conversion rate
+
+---
+
+## LONG-TERM VISION
+
+* 10M users by 2030
+* 15 African countries
+* One app for food, services, and local commerce
+
+**A1 Services is not just an app — it’s infrastructure for African commerce.**
+
+---
+
+## UI / UX DESIGN – A1 SERVICES APP
+
+### Design Reference
+
+* **Navigation feel:** WhatsApp / Instagram (fast, familiar, bottom-first)
+* **Philosophy:** Zero learning curve — if you can use WhatsApp, you can use A1
+* **Target:** First-time smartphone users + power users
+
+### Brand Colors
+
+* **Primary Orange:** #FF7A00 (energy, food, action)
+* **Black:** #000000 (authority, clarity)
+* **White:** #FFFFFF (clean, breathable UI)
+
+---
+
+## GLOBAL APP STRUCTURE
+
+### Bottom Navigation Bar (Persistent)
+
+(Instagram-style icons, WhatsApp-level simplicity)
+
+1. **Home** 🏠
+2. **Orders** 📦
+3. **Explore** 🔍
+4. **Rewards** 🎮
+5. **Profile** 👤
+
+Bottom bar:
+
+* White background
+* Active tab = Orange icon + underline
+* Inactive = Black/grey
+
+---
+
+## SCREEN-BY-SCREEN APP BUILD
+
+### 1. HOME (Default Screen)
+
+**Purpose:** Fast ordering, zero friction
+
+Layout:
+
+* Top greeting: "Hi Moroka 👋"
+* Campus/location selector
+* Live banner: "Skip the Queue – Order Ahead"
+* Vendor feed (card-based, vertical scroll)
+
+Vendor Card:
+
+* Logo
+* Name (bold)
+* Prep time (⏱️ 8 mins)
+* Status: Open / Busy / Closing Soon
+* CTA: **Order Now (Orange button)**
+
+---
+
+### 2. ORDERS (WhatsApp-style list)
+
+**Purpose:** Track everything, instantly
+
+Layout:
+
+* List view (like WhatsApp chats)
+* Each order card shows:
+
+  * Vendor name
+  * Last update ("Preparing", "Ready")
+  * Time
+  * Status dot (Orange = active, Green = ready)
+
+Tap opens **Order Detail Screen**:
+
+* Progress bar (Received → Preparing → Ready)
+* Pickup code / QR
+* Vendor instructions
+
+---
+
+### 3. EXPLORE (Instagram-style discovery)
+
+**Purpose:** Discovery & upsell
+
+Tabs at top:
+
+* Food 🍔
+* Shops 🛍️
+* Services 🛠️
+
+Content:
+
+* Grid cards (Insta feel)
+* Promotions
+* Sponsored vendors (clearly tagged)
+
+Search:
+
+* Vendor name
+* Food item
+* "Open now"
+
+---
+
+### 4. REWARDS (Gamified Core)
+
+**Purpose:** Retention & fun
+
+Sections:
+
+* Loyalty points balance
+* Daily streak
+* Campus leaderboard
+* Challenges ("Order 3x this week")
+
+Visuals:
+
+* Progress rings
+* Badges
+* Orange highlights
+
+---
+
+### 5. PROFILE
+
+**Purpose:** Control & trust
+
+Sections:
+
+* Wallet (payments)
+* Subscriptions (Free / Premium)
+* Order history
+* Referrals
+* Support
+* Settings
+
+---
+
+## VENDOR APP (OR VENDOR MODE)
+
+### Vendor Home
+
+* Big toggle: OPEN / CLOSED
+* Incoming orders list (real-time)
+
+Order Card:
+
+* Items
+* Prep time adjuster
+* Accept / Reject
+
+### Vendor Tools
+
+* Menu editor
+* Stock toggle
+* Daily sales summary
+
+---
+
+## ADMIN DASHBOARD (WEB)
+
+* Vendor approval
+* Live order map
+* Revenue & commission tracking
+* Push notifications
+* User & vendor management
+
+---
+
+## MICRO-INTERACTIONS (VERY IMPORTANT)
+
+* Button press vibration
+* Order status animation
+* Sound when order is ready (WhatsApp-like)
+* Smooth bottom-tab transitions
+
+---
+
+## ACCESSIBILITY & PERFORMANCE
+
+* Large tap targets
+* Low-data mode
+* Works on low-end Android phones
+* Offline fallback (view last orders)
+
+---
+
+## BUILD STATUS
+
+This document now defines:
+
+* ✅ Full app structure
+* ✅ Full UI navigation
+* ✅ All screens
+* ✅ Brand & interaction rules
+
+**This is a complete app specification ready for Figma + development.**
+
+---
+
+## DEVELOPER EXECUTION PLAN – SPRINTS + BACKEND APIs
+
+### TECH DECISION (LOCKED)
+
+* **Frontend:** Flutter (Android + iOS)
+* **Backend:** Firebase (Auth, Firestore, Functions)
+* **Admin:** Web (React or Firebase Console initially)
+* **Payments:** Mobile Money + Cash-on-pickup
+
+This stack is chosen for **speed, low cost, and campus reliability**.
+
+---
+
+## SPRINT STRUCTURE (6 SPRINTS – 2 WEEKS EACH)
+
+### 🟠 SPRINT 1 – FOUNDATION & AUTH (Week 1–2)
+
+**Goal:** App opens, users log in, navigation works
+
+Frontend:
+
+* Bottom navigation bar (Home, Orders, Explore, Rewards, Profile)
+* App theme (Orange / Black / White)
+* Splash screen
+* Auth screens (Phone / Email)
+
+Backend:
+
+* Firebase Auth setup
+* User roles (customer, vendor, admin)
+
+APIs / Data:
+
+* POST /auth/register
+* POST /auth/login
+* GET /user/profile
+
+Deliverable:
+✅ User can install app, log in, and navigate
+
+---
+
+### 🟠 SPRINT 2 – HOME + VENDOR DISCOVERY (Week 3–4)
+
+**Goal:** Users can see vendors like Instagram feed
+
+Frontend:
+
+* Home feed UI
+* Vendor cards
+* Location selector
+
+Backend:
+
+* Vendor collection
+* Open/closed status
+* Prep time field
+
+APIs:
+
+* GET /vendors
+* GET /vendors/{id}
+
+Deliverable:
+✅ User sees real vendors in real time
+
+---
+
+### 🟠 SPRINT 3 – ORDERING SYSTEM (Week 5–6)
+
+**Goal:** Core business works
+
+Frontend:
+
+* Vendor menu screen
+* Add to cart
+* Place order flow
+
+Backend:
+
+* Orders collection
+* Order state machine
+
+Order Status Flow:
+Received → Accepted → Preparing → Ready → Completed
+
+APIs:
+
+* POST /orders
+* GET /orders/{userId}
+* PATCH /orders/{orderId}/status
+
+Deliverable:
+✅ User can place & track orders
+
+---
+
+### 🟠 SPRINT 4 – VENDOR MODE (Week 7–8)
+
+**Goal:** Vendors can operate daily
+
+Frontend:
+
+* Vendor dashboard
+* Incoming orders list
+* Accept / reject orders
+* Prep time adjustment
+
+Backend:
+
+* Vendor permissions
+* Real-time listeners
+
+APIs:
+
+* GET /vendor/orders
+* PATCH /vendor/orders/{id}
+
+Deliverable:
+✅ Vendors can fully run their business
+
+---
+
+### 🟠 SPRINT 5 – PAYMENTS + MONETIZATION (Week 9–10)
+
+**Goal:** Money flows
+
+Frontend:
+
+* Payment selection UI
+* Wallet screen
+* Subscription screen
+
+Backend:
+
+* Transaction records
+* Commission calculation (5%)
+* Subscription flags
+
+APIs:
+
+* POST /payments/initiate
+* POST /subscriptions/activate
+
+Deliverable:
+✅ Revenue is generated
+
+---
+
+### 🟠 SPRINT 6 – REWARDS + POLISH (Week 11–12)
+
+**Goal:** Retention & launch readiness
+
+Frontend:
+
+* Rewards screen
+* Loyalty points
+* Referral codes
+
+Backend:
+
+* Points engine
+* Referral tracking
+
+APIs:
+
+* POST /rewards/earn
+* GET /rewards/status
+
+Deliverable:
+✅ Launch-ready MVP
+
+---
+
+## DATABASE SCHEMA (SIMPLIFIED)
+
+### users
+
+* id
+* role
+* phone
+* points
+* subscription
+
+### vendors
+
+* id
+* name
+* location
+* open_status
+* prep_time
+
+### orders
+
+* id
+* user_id
+* vendor_id
+* items
+* status
+* total
+
+### transactions
+
+* id
+* order_id
+* amount
+* commission
+
+---
+
+## TEAM REQUIRED
+
+* 1 Flutter Developer
+* 1 Backend Developer
+* 1 UI/UX Designer (part-time)
+* 1 Product Owner (you)
+
+---
+
+## TIMELINE SUMMARY
+
+* MVP: **12 weeks**
+* Campus pilot ready: **Week 8**
+* Monetization live: **Week 10**
+
+---
+
+## EXECUTION STATUS
+
+You now have:
+
+* ✅ Sprint-by-sprint plan
+* ✅ API contracts
+* ✅ Database schema
+* ✅ Timeline & team size
+
+**This is developer-executable. No guessing.**
