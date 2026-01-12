@@ -55,9 +55,6 @@ async function initStripe() {
   }
 }
 
-// Initialize Stripe on startup
-await initStripe();
-
 // Stripe webhook route - MUST be before express.json()
 app.post(
   '/api/stripe/webhook',
@@ -133,6 +130,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize Stripe on startup
+  await initStripe();
+  
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
