@@ -22,6 +22,7 @@ import {
   Clock, DollarSign, TrendingUp, ArrowLeft, Loader2, CheckCircle, XCircle,
   Upload, Image, Camera, Bell, Volume2
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { useLocation } from "wouter";
 import type { Vendor, Product, Order } from "@shared/schema";
 
@@ -63,6 +64,16 @@ const shopFormSchema = z.object({
 });
 
 function OverviewTab({ vendor, analytics }: { vendor: Vendor; analytics: any }) {
+  const weeklyData = analytics?.weeklyData || [
+    { day: 'Mon', orders: 0, revenue: 0 },
+    { day: 'Tue', orders: 0, revenue: 0 },
+    { day: 'Wed', orders: 0, revenue: 0 },
+    { day: 'Thu', orders: 0, revenue: 0 },
+    { day: 'Fri', orders: 0, revenue: 0 },
+    { day: 'Sat', orders: 0, revenue: 0 },
+    { day: 'Sun', orders: 0, revenue: 0 },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -111,6 +122,53 @@ function OverviewTab({ vendor, analytics }: { vendor: Vendor; analytics: any }) 
           </div>
         </Card>
       </div>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-4">Weekly Orders</h3>
+        <div className="h-48" data-testid="chart-weekly-orders">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyData}>
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+              />
+              <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-4">Revenue Trend</h3>
+        <div className="h-48" data-testid="chart-revenue-trend">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={weeklyData}>
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `$${val}`} />
+              <Tooltip 
+                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="revenue" 
+                stroke="hsl(142 76% 36%)" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(142 76% 36%)' }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       <Card className="p-4">
         <h3 className="font-semibold mb-3">Shop Details</h3>

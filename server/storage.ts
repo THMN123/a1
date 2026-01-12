@@ -85,7 +85,7 @@ export interface IStorage {
   updatePromotion(id: number, updates: Partial<Promotion>): Promise<Promotion | undefined>;
 
   // Analytics
-  getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string }>;
+  getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string; weeklyData: any[] }>;
   getPlatformAnalytics(): Promise<{ totalOrders: number; totalRevenue: string; totalVendors: number; totalUsers: number }>;
 }
 
@@ -401,15 +401,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Analytics
-  async getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string }> {
+  async getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string; weeklyData: any[] }> {
     const vendorOrders = await db.select().from(orders).where(eq(orders.vendorId, vendorId));
     const totalOrders = vendorOrders.length;
     const totalRevenue = vendorOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyData = dayNames.map((day, index) => {
+      const dayOrders = vendorOrders.filter(o => new Date(o.createdAt).getDay() === index);
+      return {
+        day,
+        orders: dayOrders.length,
+        revenue: dayOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0)
+      };
+    });
+    const reorderedWeekly = [...weeklyData.slice(1), weeklyData[0]];
+    
     return {
       totalOrders,
       totalRevenue: totalRevenue.toFixed(2),
-      avgOrderValue: avgOrderValue.toFixed(2)
+      avgOrderValue: avgOrderValue.toFixed(2),
+      weeklyData: reorderedWeekly
     };
   }
 
