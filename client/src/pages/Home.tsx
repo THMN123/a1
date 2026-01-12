@@ -3,7 +3,8 @@ import { useVendors } from "@/hooks/use-vendors";
 import { useQuery } from "@tanstack/react-query";
 import { VendorCard } from "@/components/VendorCard";
 import { BottomNav } from "@/components/BottomNav";
-import { Bell, Search, Filter, Star, Clock, TrendingUp, Sparkles, Compass } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
+import { Search, Filter, Star, Clock, TrendingUp, Sparkles, Compass } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
@@ -78,10 +79,7 @@ export default function Home() {
               {user?.firstName || "Guest"}
             </h1>
           </div>
-          <button className="p-2.5 rounded-full bg-muted hover:bg-accent text-foreground transition-colors relative" data-testid="button-notifications">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-          </button>
+          <NotificationBell />
         </div>
 
         {/* Search */}
