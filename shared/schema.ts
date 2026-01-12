@@ -71,6 +71,7 @@ export const products = pgTable("products", {
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"),
+  category: text("category"),
   prepTimeMinutes: integer("prep_time_minutes").default(10).notNull(),
   isAvailable: boolean("is_available").default(true).notNull(),
 });

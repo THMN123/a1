@@ -29,10 +29,21 @@ const productFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   price: z.string().min(1, "Price is required"),
+  category: z.string().optional(),
   prepTimeMinutes: z.string().optional(),
   isAvailable: z.boolean().default(true),
   imageUrl: z.string().optional(),
 });
+
+const DEFAULT_CATEGORIES = [
+  "Mains",
+  "Sides",
+  "Drinks",
+  "Desserts",
+  "Snacks",
+  "Combos",
+  "Specials",
+];
 
 const DAYS_OF_WEEK = [
   { value: "0", label: "Sunday" },
@@ -161,8 +172,11 @@ function ProductsTab({ products, onAdd, onEdit, onDelete }: {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-medium truncate">{product.name}</h4>
+                    {product.category && (
+                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                    )}
                     <Badge variant={product.isAvailable ? "default" : "secondary"}>
                       {product.isAvailable ? "Available" : "Unavailable"}
                     </Badge>
@@ -274,6 +288,13 @@ function OrdersTab({ orders, onUpdateStatus }: {
   );
 }
 
+type HoursEntry = {
+  dayOfWeek: number;
+  openTime: string;
+  closeTime: string;
+  isClosed: boolean;
+};
+
 function ShopSettingsTab({ vendor, onUpdate }: { vendor: Vendor; onUpdate: (data: any) => void }) {
   const { toast } = useToast();
   const [logoUrl, setLogoUrl] = useState(vendor.imageUrl || "");
@@ -298,6 +319,47 @@ function ShopSettingsTab({ vendor, onUpdate }: { vendor: Vendor; onUpdate: (data
     },
     onError: () => toast({ title: "Failed to upload banner", variant: "destructive" })
   });
+
+  const { data: vendorHours = [] } = useQuery<HoursEntry[]>({
+    queryKey: ['/api/vendor-admin/hours'],
+  });
+
+  const defaultHours: HoursEntry[] = DAYS_OF_WEEK.map((day) => ({
+    dayOfWeek: parseInt(day.value),
+    openTime: "09:00",
+    closeTime: "17:00",
+    isClosed: false,
+  }));
+
+  const [hours, setHours] = useState<HoursEntry[]>(defaultHours);
+
+  // Update hours when vendor hours load
+  if (vendorHours.length > 0 && hours === defaultHours) {
+    setHours(vendorHours);
+  }
+
+  const updateHoursMutation = useMutation({
+    mutationFn: async (hoursData: HoursEntry[]) => {
+      return await apiRequest('PUT', '/api/vendor-admin/hours', { hours: hoursData });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/vendor-admin/hours'] });
+      toast({ title: "Business hours updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update hours", variant: "destructive" });
+    }
+  });
+
+  const handleHoursChange = (dayOfWeek: number, field: 'openTime' | 'closeTime' | 'isClosed', value: string | boolean) => {
+    setHours(prev => prev.map(h => 
+      h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h
+    ));
+  };
+
+  const saveHours = () => {
+    updateHoursMutation.mutate(hours);
+  };
   
   const form = useForm({
     resolver: zodResolver(shopFormSchema),
@@ -426,6 +488,67 @@ function ShopSettingsTab({ vendor, onUpdate }: { vendor: Vendor; onUpdate: (data
       </Card>
 
       <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold">Business Hours</h3>
+          </div>
+          <Button 
+            size="sm" 
+            onClick={saveHours}
+            disabled={updateHoursMutation.isPending}
+            data-testid="button-save-hours"
+          >
+            {updateHoursMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Save Hours
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {DAYS_OF_WEEK.map((day) => {
+            const dayHours = hours.find(h => h.dayOfWeek === parseInt(day.value)) || {
+              dayOfWeek: parseInt(day.value),
+              openTime: "09:00",
+              closeTime: "17:00",
+              isClosed: false,
+            };
+            return (
+              <div key={day.value} className="flex items-center gap-4" data-testid={`hours-${day.label.toLowerCase()}`}>
+                <div className="w-20 flex-shrink-0">
+                  <span className="text-sm font-medium">{day.label.slice(0, 3)}</span>
+                </div>
+                <Switch
+                  checked={!dayHours.isClosed}
+                  onCheckedChange={(checked) => handleHoursChange(parseInt(day.value), 'isClosed', !checked)}
+                  data-testid={`switch-${day.label.toLowerCase()}-open`}
+                />
+                {!dayHours.isClosed ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input
+                      type="time"
+                      value={dayHours.openTime}
+                      onChange={(e) => handleHoursChange(parseInt(day.value), 'openTime', e.target.value)}
+                      className="w-28"
+                      data-testid={`input-${day.label.toLowerCase()}-open`}
+                    />
+                    <span className="text-muted-foreground">to</span>
+                    <Input
+                      type="time"
+                      value={dayHours.closeTime}
+                      onChange={(e) => handleHoursChange(parseInt(day.value), 'closeTime', e.target.value)}
+                      className="w-28"
+                      data-testid={`input-${day.label.toLowerCase()}-close`}
+                    />
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Closed</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-4">
         <h3 className="font-semibold mb-4">Shop Details</h3>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onUpdate)} className="space-y-4">
@@ -513,6 +636,7 @@ export default function VendorAdmin() {
       name: "",
       description: "",
       price: "",
+      category: "",
       prepTimeMinutes: "10",
       isAvailable: true,
       imageUrl: "",
@@ -610,6 +734,7 @@ export default function VendorAdmin() {
       name: "",
       description: "",
       price: "",
+      category: "",
       prepTimeMinutes: "10",
       isAvailable: true,
       imageUrl: "",
@@ -624,6 +749,7 @@ export default function VendorAdmin() {
       name: product.name,
       description: product.description || "",
       price: product.price,
+      category: product.category || "",
       prepTimeMinutes: String(product.prepTimeMinutes),
       isAvailable: product.isAvailable,
       imageUrl: product.imageUrl || "",
@@ -641,6 +767,7 @@ export default function VendorAdmin() {
       name: data.name,
       description: data.description || null,
       price: data.price,
+      category: data.category || null,
       prepTimeMinutes: parseInt(data.prepTimeMinutes) || 10,
       isAvailable: data.isAvailable,
       imageUrl: productImageUrl || null,
@@ -819,6 +946,29 @@ export default function VendorAdmin() {
                   onChange={handleProductImageUpload}
                 />
               </div>
+
+              <FormField
+                control={productForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-product-category">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {DEFAULT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
