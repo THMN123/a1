@@ -1,7 +1,7 @@
 import { Bell, ShoppingBag, Gift, Megaphone, Info, Check } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -117,6 +117,12 @@ export function NotificationBell() {
 
   const unreadCount = unreadCountData?.count || 0;
   const recentNotifications = notifications?.slice(0, 10) || [];
+
+  useEffect(() => {
+    if (open && unreadCount > 0 && notifications && notifications.length > 0) {
+      markAllReadMutation.mutate();
+    }
+  }, [open, notifications]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
