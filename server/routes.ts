@@ -866,7 +866,10 @@ export async function registerRoutes(
     }
   });
 
-  await seedDatabase();
+  // Seed database in background - don't block server startup
+  seedDatabase().catch(err => {
+    console.error('Database seeding failed (non-blocking):', err);
+  });
 
   return httpServer;
 }
