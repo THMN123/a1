@@ -653,8 +653,11 @@ export async function registerRoutes(
       imageUrl: application.logoUrl || '',
     });
     
-    // Update user role to vendor
-    await storage.updateProfile(application.userId, { role: 'vendor' });
+    // Update user role to vendor (but preserve admin role)
+    const existingProfile = await storage.getProfile(application.userId);
+    if (existingProfile?.role !== 'admin') {
+      await storage.updateProfile(application.userId, { role: 'vendor' });
+    }
     
     res.json({ application, vendor });
   });
