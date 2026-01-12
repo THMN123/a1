@@ -1,12 +1,12 @@
 import { 
   users, profiles, vendors, products, orders, orderItems, pushSubscriptions, rewards, redemptions, vendorCategories,
-  savedAddresses, notificationPreferences,
+  savedAddresses, notificationPreferences, vendorApplications, productCategories, vendorHours, promotions, platformMetrics,
   type User, type Profile, type Vendor, type Product, type Order, type OrderItem, type PushSubscription, type Reward, type Redemption, type VendorCategory,
-  type SavedAddress, type NotificationPreferences,
+  type SavedAddress, type NotificationPreferences, type VendorApplication, type ProductCategory, type VendorHours, type Promotion, type PlatformMetrics,
   type CreateVendorRequest, type CreateProductRequest, type CreateOrderRequest, type UpdateOrderStatusRequest, type CreatePushSubscriptionRequest
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, count, sum } from "drizzle-orm";
 
 export interface IStorage {
   // Profiles
@@ -56,6 +56,37 @@ export interface IStorage {
   // Notification Preferences
   getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
   upsertNotificationPreferences(userId: string, prefs: Partial<NotificationPreferences>): Promise<NotificationPreferences>;
+
+  // Vendor Applications
+  getVendorApplications(): Promise<VendorApplication[]>;
+  getVendorApplicationsByStatus(status: string): Promise<VendorApplication[]>;
+  getVendorApplicationByUserId(userId: string): Promise<VendorApplication | undefined>;
+  createVendorApplication(application: Partial<VendorApplication>): Promise<VendorApplication>;
+  updateVendorApplication(id: number, updates: Partial<VendorApplication>): Promise<VendorApplication | undefined>;
+
+  // Product Categories
+  getProductCategories(vendorId: number): Promise<ProductCategory[]>;
+  createProductCategory(category: Partial<ProductCategory>): Promise<ProductCategory>;
+  updateProductCategory(id: number, updates: Partial<ProductCategory>): Promise<ProductCategory | undefined>;
+  deleteProductCategory(id: number): Promise<boolean>;
+
+  // Vendor Hours
+  getVendorHours(vendorId: number): Promise<VendorHours[]>;
+  upsertVendorHours(vendorId: number, hours: Partial<VendorHours>[]): Promise<VendorHours[]>;
+
+  // Products CRUD
+  updateProduct(id: number, updates: Partial<Product>): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<boolean>;
+
+  // Promotions
+  getPromotions(): Promise<Promotion[]>;
+  getVendorPromotions(vendorId: number): Promise<Promotion[]>;
+  createPromotion(promotion: Partial<Promotion>): Promise<Promotion>;
+  updatePromotion(id: number, updates: Partial<Promotion>): Promise<Promotion | undefined>;
+
+  // Analytics
+  getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string }>;
+  getPlatformAnalytics(): Promise<{ totalOrders: number; totalRevenue: string; totalVendors: number; totalUsers: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +290,143 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  // Vendor Applications
+  async getVendorApplications(): Promise<VendorApplication[]> {
+    return await db.select().from(vendorApplications).orderBy(desc(vendorApplications.submittedAt));
+  }
+
+  async getVendorApplicationsByStatus(status: string): Promise<VendorApplication[]> {
+    return await db.select().from(vendorApplications)
+      .where(eq(vendorApplications.status, status as any))
+      .orderBy(desc(vendorApplications.submittedAt));
+  }
+
+  async getVendorApplicationByUserId(userId: string): Promise<VendorApplication | undefined> {
+    const [application] = await db.select().from(vendorApplications).where(eq(vendorApplications.userId, userId));
+    return application;
+  }
+
+  async createVendorApplication(application: Partial<VendorApplication>): Promise<VendorApplication> {
+    const [newApp] = await db.insert(vendorApplications).values(application as any).returning();
+    return newApp;
+  }
+
+  async updateVendorApplication(id: number, updates: Partial<VendorApplication>): Promise<VendorApplication | undefined> {
+    const [updated] = await db.update(vendorApplications)
+      .set(updates)
+      .where(eq(vendorApplications.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Product Categories
+  async getProductCategories(vendorId: number): Promise<ProductCategory[]> {
+    return await db.select().from(productCategories)
+      .where(eq(productCategories.vendorId, vendorId))
+      .orderBy(productCategories.sortOrder);
+  }
+
+  async createProductCategory(category: Partial<ProductCategory>): Promise<ProductCategory> {
+    const [newCat] = await db.insert(productCategories).values(category as any).returning();
+    return newCat;
+  }
+
+  async updateProductCategory(id: number, updates: Partial<ProductCategory>): Promise<ProductCategory | undefined> {
+    const [updated] = await db.update(productCategories)
+      .set(updates)
+      .where(eq(productCategories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProductCategory(id: number): Promise<boolean> {
+    await db.delete(productCategories).where(eq(productCategories.id, id));
+    return true;
+  }
+
+  // Vendor Hours
+  async getVendorHours(vendorId: number): Promise<VendorHours[]> {
+    return await db.select().from(vendorHours)
+      .where(eq(vendorHours.vendorId, vendorId))
+      .orderBy(vendorHours.dayOfWeek);
+  }
+
+  async upsertVendorHours(vendorId: number, hoursData: Partial<VendorHours>[]): Promise<VendorHours[]> {
+    await db.delete(vendorHours).where(eq(vendorHours.vendorId, vendorId));
+    if (hoursData.length === 0) return [];
+    const inserted = await db.insert(vendorHours)
+      .values(hoursData.map(h => ({ ...h, vendorId })) as any)
+      .returning();
+    return inserted;
+  }
+
+  // Products CRUD
+  async updateProduct(id: number, updates: Partial<Product>): Promise<Product | undefined> {
+    const [updated] = await db.update(products)
+      .set(updates)
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProduct(id: number): Promise<boolean> {
+    await db.delete(products).where(eq(products.id, id));
+    return true;
+  }
+
+  // Promotions
+  async getPromotions(): Promise<Promotion[]> {
+    return await db.select().from(promotions).orderBy(desc(promotions.startsAt));
+  }
+
+  async getVendorPromotions(vendorId: number): Promise<Promotion[]> {
+    return await db.select().from(promotions)
+      .where(eq(promotions.vendorId, vendorId))
+      .orderBy(desc(promotions.startsAt));
+  }
+
+  async createPromotion(promotion: Partial<Promotion>): Promise<Promotion> {
+    const [newPromo] = await db.insert(promotions).values(promotion as any).returning();
+    return newPromo;
+  }
+
+  async updatePromotion(id: number, updates: Partial<Promotion>): Promise<Promotion | undefined> {
+    const [updated] = await db.update(promotions)
+      .set(updates)
+      .where(eq(promotions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Analytics
+  async getVendorAnalytics(vendorId: number): Promise<{ totalOrders: number; totalRevenue: string; avgOrderValue: string }> {
+    const vendorOrders = await db.select().from(orders).where(eq(orders.vendorId, vendorId));
+    const totalOrders = vendorOrders.length;
+    const totalRevenue = vendorOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    return {
+      totalOrders,
+      totalRevenue: totalRevenue.toFixed(2),
+      avgOrderValue: avgOrderValue.toFixed(2)
+    };
+  }
+
+  async getPlatformAnalytics(): Promise<{ totalOrders: number; totalRevenue: string; totalVendors: number; totalUsers: number }> {
+    const allOrders = await db.select().from(orders);
+    const allVendors = await db.select().from(vendors);
+    const allUsers = await db.select().from(profiles);
+    
+    const totalOrders = allOrders.length;
+    const totalRevenue = allOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount), 0);
+    
+    return {
+      totalOrders,
+      totalRevenue: totalRevenue.toFixed(2),
+      totalVendors: allVendors.length,
+      totalUsers: allUsers.length
+    };
   }
 }
 

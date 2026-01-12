@@ -124,6 +124,66 @@ export const notificationPreferences = pgTable("notification_preferences", {
   emailNotifications: boolean("email_notifications").default(false).notNull(),
 });
 
+export const vendorApplications = pgTable("vendor_applications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  businessName: text("business_name").notNull(),
+  businessType: text("business_type").notNull(),
+  description: text("description"),
+  location: text("location").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  logoUrl: text("logo_url"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+  rejectionReason: text("rejection_reason"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+});
+
+export const productCategories = pgTable("product_categories", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+});
+
+export const vendorHours = pgTable("vendor_hours", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id),
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday, 6=Saturday
+  openTime: text("open_time").notNull(), // HH:MM format
+  closeTime: text("close_time").notNull(),
+  isClosed: boolean("is_closed").default(false).notNull(),
+});
+
+export const platformMetrics = pgTable("platform_metrics", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull(),
+  totalOrders: integer("total_orders").default(0).notNull(),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0").notNull(),
+  totalUsers: integer("total_users").default(0).notNull(),
+  totalVendors: integer("total_vendors").default(0).notNull(),
+  newUsers: integer("new_users").default(0).notNull(),
+  activeUsers: integer("active_users").default(0).notNull(),
+});
+
+export const promotions = pgTable("promotions", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  discountType: text("discount_type", { enum: ["percentage", "fixed"] }).notNull(),
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
+  code: text("code").unique(),
+  vendorId: integer("vendor_id").references(() => vendors.id), // null = platform-wide
+  isActive: boolean("is_active").default(true).notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  usageLimit: integer("usage_limit"),
+  usageCount: integer("usage_count").default(0).notNull(),
+});
+
 // === RELATIONS ===
 
 export const profilesRelations = relations(profiles, ({ one }) => ({
@@ -185,6 +245,10 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: t
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true });
 export const insertSavedAddressSchema = createInsertSchema(savedAddresses).omit({ id: true });
 export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({ id: true });
+export const insertVendorApplicationSchema = createInsertSchema(vendorApplications).omit({ id: true, submittedAt: true, reviewedAt: true, reviewedBy: true, status: true });
+export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
+export const insertVendorHoursSchema = createInsertSchema(vendorHours).omit({ id: true });
+export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, usageCount: true });
 
 // === EXPLICIT API TYPES ===
 
@@ -199,6 +263,11 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type SavedAddress = typeof savedAddresses.$inferSelect;
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type VendorApplication = typeof vendorApplications.$inferSelect;
+export type ProductCategory = typeof productCategories.$inferSelect;
+export type VendorHours = typeof vendorHours.$inferSelect;
+export type PlatformMetrics = typeof platformMetrics.$inferSelect;
+export type Promotion = typeof promotions.$inferSelect;
 
 export type CreateVendorRequest = z.infer<typeof insertVendorSchema>;
 export type CreateProductRequest = z.infer<typeof insertProductSchema>;

@@ -444,6 +444,308 @@ export async function registerRoutes(
     }
   });
 
+  // === VENDOR ADMIN ROUTES ===
+
+  // -- Vendor Applications --
+  app.get('/api/vendor-admin/application', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const application = await storage.getVendorApplicationByUserId(user.claims.sub);
+    res.json(application || null);
+  });
+
+  app.post('/api/vendor-admin/application', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    try {
+      const existing = await storage.getVendorApplicationByUserId(user.claims.sub);
+      if (existing) {
+        return res.status(400).json({ message: "Application already submitted" });
+      }
+      
+      const application = await storage.createVendorApplication({
+        ...req.body,
+        userId: user.claims.sub,
+      });
+      res.status(201).json(application);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to submit application" });
+    }
+  });
+
+  // -- Vendor's Own Shop --
+  app.get('/api/vendor-admin/shop', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    res.json(vendor || null);
+  });
+
+  app.put('/api/vendor-admin/shop', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const updated = await storage.updateVendor(vendor.id, req.body);
+    res.json(updated);
+  });
+
+  // -- Vendor Product Management --
+  app.get('/api/vendor-admin/products', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const products = await storage.getProductsByVendorId(vendor.id);
+    res.json(products);
+  });
+
+  app.post('/api/vendor-admin/products', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    try {
+      const product = await storage.createProduct({ ...req.body, vendorId: vendor.id });
+      res.status(201).json(product);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.put('/api/vendor-admin/products/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const productId = Number(req.params.id);
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const product = await storage.getProduct(productId);
+    if (!product || product.vendorId !== vendor.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    const updated = await storage.updateProduct(productId, req.body);
+    res.json(updated);
+  });
+
+  app.delete('/api/vendor-admin/products/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const productId = Number(req.params.id);
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const product = await storage.getProduct(productId);
+    if (!product || product.vendorId !== vendor.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    
+    await storage.deleteProduct(productId);
+    res.json({ success: true });
+  });
+
+  // -- Vendor Orders --
+  app.get('/api/vendor-admin/orders', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const orders = await storage.getOrdersByVendorId(vendor.id);
+    res.json(orders);
+  });
+
+  // -- Vendor Analytics --
+  app.get('/api/vendor-admin/analytics', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const analytics = await storage.getVendorAnalytics(vendor.id);
+    res.json(analytics);
+  });
+
+  // -- Vendor Hours --
+  app.get('/api/vendor-admin/hours', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const hours = await storage.getVendorHours(vendor.id);
+    res.json(hours);
+  });
+
+  app.put('/api/vendor-admin/hours', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    const vendor = await storage.getVendorByOwnerId(user.claims.sub);
+    if (!vendor) return res.status(404).json({ message: "No shop found" });
+    
+    const hours = await storage.upsertVendorHours(vendor.id, req.body.hours);
+    res.json(hours);
+  });
+
+  // === SUPER ADMIN ROUTES ===
+
+  // Middleware helper for admin check
+  const requireAdmin = async (req: any, res: any): Promise<boolean> => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ message: "Unauthorized" });
+      return false;
+    }
+    const user = req.user as any;
+    const profile = await storage.getProfile(user.claims.sub);
+    if (!profile || profile.role !== 'admin') {
+      res.status(403).json({ message: "Admin access required" });
+      return false;
+    }
+    return true;
+  };
+
+  // -- Vendor Applications Management --
+  app.get('/api/super-admin/applications', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const applications = await storage.getVendorApplications();
+    res.json(applications);
+  });
+
+  app.get('/api/super-admin/applications/pending', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const applications = await storage.getVendorApplicationsByStatus('pending');
+    res.json(applications);
+  });
+
+  app.patch('/api/super-admin/applications/:id/approve', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const user = req.user as any;
+    const appId = Number(req.params.id);
+    
+    const application = await storage.updateVendorApplication(appId, {
+      status: 'approved',
+      reviewedAt: new Date(),
+      reviewedBy: user.claims.sub
+    });
+    
+    if (!application) return res.status(404).json({ message: "Application not found" });
+    
+    // Create vendor from application
+    const vendor = await storage.createVendor({
+      ownerId: application.userId,
+      name: application.businessName,
+      description: application.description || '',
+      location: application.location,
+      imageUrl: application.logoUrl || '',
+    });
+    
+    // Update user role to vendor
+    await storage.updateProfile(application.userId, { role: 'vendor' });
+    
+    res.json({ application, vendor });
+  });
+
+  app.patch('/api/super-admin/applications/:id/reject', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const user = req.user as any;
+    const appId = Number(req.params.id);
+    
+    const application = await storage.updateVendorApplication(appId, {
+      status: 'rejected',
+      rejectionReason: req.body.reason || 'Application not approved',
+      reviewedAt: new Date(),
+      reviewedBy: user.claims.sub
+    });
+    
+    if (!application) return res.status(404).json({ message: "Application not found" });
+    res.json(application);
+  });
+
+  // -- Platform Analytics --
+  app.get('/api/super-admin/analytics', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const analytics = await storage.getPlatformAnalytics();
+    res.json(analytics);
+  });
+
+  // -- All Vendors Management --
+  app.get('/api/super-admin/vendors', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const vendors = await storage.getVendors();
+    res.json(vendors);
+  });
+
+  app.patch('/api/super-admin/vendors/:id/feature', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const vendorId = Number(req.params.id);
+    const vendor = await storage.updateVendor(vendorId, { isFeatured: req.body.isFeatured });
+    res.json(vendor);
+  });
+
+  // -- Promotions Management --
+  app.get('/api/super-admin/promotions', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const promos = await storage.getPromotions();
+    res.json(promos);
+  });
+
+  app.post('/api/super-admin/promotions', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    try {
+      const promo = await storage.createPromotion(req.body);
+      res.status(201).json(promo);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create promotion" });
+    }
+  });
+
+  app.patch('/api/super-admin/promotions/:id', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const promoId = Number(req.params.id);
+    const promo = await storage.updatePromotion(promoId, req.body);
+    if (!promo) return res.status(404).json({ message: "Promotion not found" });
+    res.json(promo);
+  });
+
+  // -- Categories Management --
+  app.post('/api/super-admin/categories', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    try {
+      const [category] = await db.insert(vendorCategories).values(req.body).returning();
+      res.status(201).json(category);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.put('/api/super-admin/categories/:id', async (req, res) => {
+    if (!await requireAdmin(req, res)) return;
+    const catId = Number(req.params.id);
+    try {
+      const [updated] = await db.update(vendorCategories)
+        .set(req.body)
+        .where(eq(vendorCategories.id, catId))
+        .returning();
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
   await seedDatabase();
 
   return httpServer;
