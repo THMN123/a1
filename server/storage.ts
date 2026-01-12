@@ -1,6 +1,8 @@
 import { 
   users, profiles, vendors, products, orders, orderItems, pushSubscriptions, rewards, redemptions, vendorCategories,
+  savedAddresses, notificationPreferences,
   type User, type Profile, type Vendor, type Product, type Order, type OrderItem, type PushSubscription, type Reward, type Redemption, type VendorCategory,
+  type SavedAddress, type NotificationPreferences,
   type CreateVendorRequest, type CreateProductRequest, type CreateOrderRequest, type UpdateOrderStatusRequest, type CreatePushSubscriptionRequest
 } from "@shared/schema";
 import { db } from "./db";
@@ -43,6 +45,17 @@ export interface IStorage {
   // Push Subscriptions
   createPushSubscription(sub: CreatePushSubscriptionRequest & { userId: string }): Promise<PushSubscription>;
   getPushSubscription(userId: string): Promise<PushSubscription | undefined>;
+
+  // Saved Addresses
+  getSavedAddresses(userId: string): Promise<SavedAddress[]>;
+  createSavedAddress(address: Partial<SavedAddress> & { userId: string }): Promise<SavedAddress>;
+  updateSavedAddress(id: number, userId: string, updates: Partial<SavedAddress>): Promise<SavedAddress | undefined>;
+  deleteSavedAddress(id: number, userId: string): Promise<boolean>;
+  setDefaultAddress(id: number, userId: string): Promise<SavedAddress | undefined>;
+
+  // Notification Preferences
+  getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined>;
+  upsertNotificationPreferences(userId: string, prefs: Partial<NotificationPreferences>): Promise<NotificationPreferences>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -188,6 +201,64 @@ export class DatabaseStorage implements IStorage {
   async getPushSubscription(userId: string): Promise<PushSubscription | undefined> {
     const [sub] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     return sub;
+  }
+
+  // Saved Addresses
+  async getSavedAddresses(userId: string): Promise<SavedAddress[]> {
+    return await db.select().from(savedAddresses).where(eq(savedAddresses.userId, userId));
+  }
+
+  async createSavedAddress(address: Partial<SavedAddress> & { userId: string }): Promise<SavedAddress> {
+    const [newAddress] = await db.insert(savedAddresses).values(address as any).returning();
+    return newAddress;
+  }
+
+  async updateSavedAddress(id: number, userId: string, updates: Partial<SavedAddress>): Promise<SavedAddress | undefined> {
+    const [updated] = await db.update(savedAddresses)
+      .set(updates)
+      .where(and(eq(savedAddresses.id, id), eq(savedAddresses.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSavedAddress(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(savedAddresses)
+      .where(and(eq(savedAddresses.id, id), eq(savedAddresses.userId, userId)));
+    return true;
+  }
+
+  async setDefaultAddress(id: number, userId: string): Promise<SavedAddress | undefined> {
+    await db.update(savedAddresses)
+      .set({ isDefault: false })
+      .where(eq(savedAddresses.userId, userId));
+    
+    const [updated] = await db.update(savedAddresses)
+      .set({ isDefault: true })
+      .where(and(eq(savedAddresses.id, id), eq(savedAddresses.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  // Notification Preferences
+  async getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined> {
+    const [prefs] = await db.select().from(notificationPreferences).where(eq(notificationPreferences.userId, userId));
+    return prefs;
+  }
+
+  async upsertNotificationPreferences(userId: string, prefs: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
+    const existing = await this.getNotificationPreferences(userId);
+    if (existing) {
+      const [updated] = await db.update(notificationPreferences)
+        .set(prefs)
+        .where(eq(notificationPreferences.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(notificationPreferences)
+        .values({ userId, ...prefs } as any)
+        .returning();
+      return created;
+    }
   }
 }
 

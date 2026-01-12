@@ -103,6 +103,27 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   auth: text("auth").notNull(),
 });
 
+export const savedAddresses = pgTable("saved_addresses", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  label: text("label").notNull(), // e.g., "Home", "Office", "Dorm"
+  address: text("address").notNull(),
+  building: text("building"),
+  room: text("room"),
+  instructions: text("instructions"),
+  isDefault: boolean("is_default").default(false).notNull(),
+});
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
+  orderUpdates: boolean("order_updates").default(true).notNull(),
+  promotions: boolean("promotions").default(true).notNull(),
+  newVendors: boolean("new_vendors").default(true).notNull(),
+  rewards: boolean("rewards").default(true).notNull(),
+  emailNotifications: boolean("email_notifications").default(false).notNull(),
+});
+
 // === RELATIONS ===
 
 export const profilesRelations = relations(profiles, ({ one }) => ({
@@ -162,6 +183,8 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true 
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true });
+export const insertSavedAddressSchema = createInsertSchema(savedAddresses).omit({ id: true });
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({ id: true });
 
 // === EXPLICIT API TYPES ===
 
@@ -174,6 +197,8 @@ export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type SavedAddress = typeof savedAddresses.$inferSelect;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 
 export type CreateVendorRequest = z.infer<typeof insertVendorSchema>;
 export type CreateProductRequest = z.infer<typeof insertProductSchema>;

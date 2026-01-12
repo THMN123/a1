@@ -367,6 +367,83 @@ export async function registerRoutes(
     }
   });
 
+  // -- Saved Addresses --
+  app.get(api.addresses.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const addresses = await storage.getSavedAddresses(user.claims.sub);
+    res.json(addresses);
+  });
+
+  app.post(api.addresses.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    try {
+      const input = api.addresses.create.input.parse(req.body);
+      const address = await storage.createSavedAddress({ ...input, userId: user.claims.sub });
+      res.status(201).json(address);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/addresses/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const id = Number(req.params.id);
+    try {
+      const input = api.addresses.update.input.parse(req.body);
+      const address = await storage.updateSavedAddress(id, user.claims.sub, input);
+      if (!address) return res.status(404).json({ message: "Address not found" });
+      res.json(address);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete('/api/addresses/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const id = Number(req.params.id);
+    await storage.deleteSavedAddress(id, user.claims.sub);
+    res.json({ success: true });
+  });
+
+  app.patch('/api/addresses/:id/default', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const id = Number(req.params.id);
+    const address = await storage.setDefaultAddress(id, user.claims.sub);
+    if (!address) return res.status(404).json({ message: "Address not found" });
+    res.json(address);
+  });
+
+  // -- Notification Preferences --
+  app.get(api.notificationPrefs.get.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    let prefs = await storage.getNotificationPreferences(user.claims.sub);
+    if (!prefs) {
+      prefs = await storage.upsertNotificationPreferences(user.claims.sub, {});
+    }
+    res.json(prefs);
+  });
+
+  app.put(api.notificationPrefs.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    try {
+      const input = api.notificationPrefs.update.input.parse(req.body);
+      const prefs = await storage.upsertNotificationPreferences(user.claims.sub, input);
+      res.json(prefs);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   await seedDatabase();
 
   return httpServer;

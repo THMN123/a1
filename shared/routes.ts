@@ -4,10 +4,13 @@ import {
   insertProductSchema, 
   createOrderRequestSchema, 
   insertPushSubscriptionSchema,
+  insertSavedAddressSchema,
   vendors,
   products,
   orders,
   pushSubscriptions,
+  savedAddresses,
+  notificationPreferences,
   insertProfileSchema,
   profiles
 } from './schema';
@@ -212,6 +215,78 @@ export const api = {
       path: '/api/stripe/publishable-key',
       responses: {
         200: z.object({ publishableKey: z.string() }),
+      },
+    },
+  },
+
+  // Saved Addresses
+  addresses: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/addresses',
+      responses: {
+        200: z.array(z.custom<typeof savedAddresses.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/addresses',
+      input: insertSavedAddressSchema.omit({ userId: true }),
+      responses: {
+        201: z.custom<typeof savedAddresses.$inferSelect>(),
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/addresses/:id',
+      input: z.object({
+        label: z.string().optional(),
+        address: z.string().optional(),
+        building: z.string().optional(),
+        room: z.string().optional(),
+        instructions: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof savedAddresses.$inferSelect>(),
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/addresses/:id',
+      responses: {
+        200: z.object({ success: z.boolean() }),
+      },
+    },
+    setDefault: {
+      method: 'PATCH' as const,
+      path: '/api/addresses/:id/default',
+      responses: {
+        200: z.custom<typeof savedAddresses.$inferSelect>(),
+      },
+    },
+  },
+
+  // Notification Preferences
+  notificationPrefs: {
+    get: {
+      method: 'GET' as const,
+      path: '/api/notification-preferences',
+      responses: {
+        200: z.custom<typeof notificationPreferences.$inferSelect>(),
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/notification-preferences',
+      input: z.object({
+        orderUpdates: z.boolean().optional(),
+        promotions: z.boolean().optional(),
+        newVendors: z.boolean().optional(),
+        rewards: z.boolean().optional(),
+        emailNotifications: z.boolean().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof notificationPreferences.$inferSelect>(),
       },
     },
   },

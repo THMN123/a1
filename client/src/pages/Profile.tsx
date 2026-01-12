@@ -25,11 +25,12 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-function ProfileItem({ icon: Icon, label, value, onClick }: any) {
+function ProfileItem({ icon: Icon, label, value, onClick, testId }: any) {
   return (
     <div 
       onClick={onClick}
       className="flex items-center justify-between p-4 bg-card rounded-2xl border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer group"
+      data-testid={testId}
     >
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
@@ -50,7 +51,7 @@ export default function Profile() {
   const { data: profile } = useProfile();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -184,11 +185,11 @@ export default function Profile() {
           </div>
         ) : (
           <>
-            <ProfileItem icon={User} label="Personal Info" onClick={() => setIsEditing(true)} />
-            <ProfileItem icon={MapPin} label="Saved Addresses" />
-            <ProfileItem icon={Bell} label="Notifications" />
-            <ProfileItem icon={Store} label="Vendor Dashboard" />
-            <ProfileItem icon={Settings} label="Settings" />
+            <ProfileItem icon={User} label="Personal Info" onClick={() => setIsEditing(true)} testId="item-personal-info" />
+            <ProfileItem icon={MapPin} label="Saved Addresses" onClick={() => navigate('/addresses')} testId="item-addresses" />
+            <ProfileItem icon={Bell} label="Notifications" onClick={() => navigate('/notifications')} testId="item-notifications" />
+            <ProfileItem icon={Store} label="Vendor Dashboard" onClick={() => navigate('/vendor-dashboard')} testId="item-vendor-dashboard" />
+            <ProfileItem icon={Settings} label="Settings" onClick={() => navigate('/settings')} testId="item-settings" />
           </>
         )}
 

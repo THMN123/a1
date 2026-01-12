@@ -13,6 +13,10 @@ import Orders from "@/pages/Orders";
 import Shops from "@/pages/Shops";
 import Rewards from "@/pages/Rewards";
 import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
+import Notifications from "@/pages/Notifications";
+import Addresses from "@/pages/Addresses";
+import VendorDashboard from "@/pages/VendorDashboard";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
@@ -61,6 +65,22 @@ function Router() {
 
       <Route path="/profile">
         {() => <ProtectedRoute component={Profile} />}
+      </Route>
+
+      <Route path="/settings">
+        {() => <ProtectedRoute component={Settings} />}
+      </Route>
+
+      <Route path="/notifications">
+        {() => <ProtectedRoute component={Notifications} />}
+      </Route>
+
+      <Route path="/addresses">
+        {() => <ProtectedRoute component={Addresses} />}
+      </Route>
+
+      <Route path="/vendor-dashboard">
+        {() => <ProtectedRoute component={VendorDashboard} />}
       </Route>
 
       <Route path="/login" component={Login} />
