@@ -100,30 +100,37 @@ export default function Settings() {
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">Notifications</h2>
           {isSupported ? (
-            <SettingRow 
-              icon={Bell} 
-              label="Push Notifications" 
-              description={
-                permission === 'denied' 
-                  ? "Blocked in browser settings" 
-                  : isSubscribed 
-                    ? "Receive order updates and alerts" 
-                    : "Enable to receive order updates"
-              }
-              action={
-                <Switch 
-                  checked={isSubscribed} 
-                  onCheckedChange={handlePushToggle}
-                  disabled={isLoading || permission === 'denied'}
-                  data-testid="switch-push-notifications"
-                />
-              }
-            />
+            <>
+              <SettingRow 
+                icon={Bell} 
+                label="Push Notifications" 
+                description={
+                  permission === 'denied' 
+                    ? "Blocked in browser settings" 
+                    : isSubscribed 
+                      ? "Receiving order updates and alerts" 
+                      : "Enable to receive order updates"
+                }
+                action={
+                  <Switch 
+                    checked={isSubscribed} 
+                    onCheckedChange={handlePushToggle}
+                    disabled={isLoading || permission === 'denied'}
+                    data-testid="switch-push-notifications"
+                  />
+                }
+              />
+              {!isSubscribed && permission !== 'denied' && (
+                <p className="text-xs text-muted-foreground px-1">
+                  Open the app in a full browser tab (not embedded preview) to enable push notifications.
+                </p>
+              )}
+            </>
           ) : (
             <SettingRow 
               icon={Bell} 
               label="Push Notifications" 
-              description="Not supported in this browser"
+              description="Open the app in a full browser tab to enable"
               action={null}
             />
           )}
