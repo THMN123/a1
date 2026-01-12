@@ -15,8 +15,29 @@ export const profiles = pgTable("profiles", {
   userId: varchar("user_id").notNull().unique().references(() => users.id),
   role: text("role", { enum: ["customer", "vendor", "admin"] }).default("customer").notNull(),
   phone: text("phone"),
+  address: text("address"),
+  bio: text("bio"),
+  profileImageUrl: text("profile_image_url"),
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).default("0").notNull(),
   loyaltyPoints: integer("loyalty_points").default(0).notNull(),
+});
+
+export const rewards = pgTable("rewards", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  pointsRequired: integer("points_required").notNull(),
+  category: text("category").notNull(), // e.g., "Food", "Drink", "Service"
+  imageUrl: text("image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const redemptions = pgTable("redemptions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  rewardId: integer("reward_id").notNull().references(() => rewards.id),
+  status: text("status", { enum: ["pending", "used", "expired"] }).default("pending").notNull(),
+  redeemedAt: timestamp("redeemed_at").defaultNow().notNull(),
 });
 
 export const vendors = pgTable("vendors", {
@@ -120,6 +141,8 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 // === ZOD SCHEMAS ===
 
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true });
+export const insertRewardSchema = createInsertSchema(rewards).omit({ id: true });
+export const insertRedemptionSchema = createInsertSchema(redemptions).omit({ id: true, redeemedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
@@ -129,6 +152,8 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 // === EXPLICIT API TYPES ===
 
 export type Profile = typeof profiles.$inferSelect;
+export type Reward = typeof rewards.$inferSelect;
+export type Redemption = typeof redemptions.$inferSelect;
 export type Vendor = typeof vendors.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;

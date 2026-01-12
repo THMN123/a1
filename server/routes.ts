@@ -4,21 +4,25 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { db } from "./db";
+import { rewards } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 // Seed function
 async function seedDatabase() {
   const vendors = await storage.getVendors();
+  const existingRewards = await db.select().from(rewards);
+  
+  if (existingRewards.length === 0) {
+    console.log("Seeding rewards...");
+    await db.insert(rewards).values([
+      { name: "Free Coffee", description: "Redeem for any small coffee", pointsRequired: 500, category: "Drink", isActive: true },
+      { name: "10% Discount", description: "Get 10% off your next meal", pointsRequired: 1000, category: "Food", isActive: true },
+      { name: "Free Burger", description: "Redeem for a classic burger", pointsRequired: 2000, category: "Food", isActive: true }
+    ]);
+  }
+
   if (vendors.length === 0) {
-    console.log("Seeding database...");
-    
-    // We need a user to own these vendors. For now, we might not have one. 
-    // This is tricky without a real user ID. 
-    // I'll skip automatic seeding of vendors for now until a user registers and becomes a vendor, 
-    // or I can create a dummy user if needed, but Replit Auth IDs are from the provider.
-    // Actually, I can check for a specific admin user or just wait.
-    
-    // Alternative: Create a placeholder system user if possible, but auth requires valid IDs.
-    // I will log that manual seeding might be needed or seed on first admin login.
     console.log("Skipping vendor seeding - waiting for first user to register as vendor.");
   }
 }
@@ -62,6 +66,50 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Internal server error" });
     }
+  });
+
+  // -- Rewards --
+  app.get(api.rewards.list.path, async (req, res) => {
+    const rewards = await storage.getRewards();
+    res.json(rewards);
+  });
+
+  app.post(api.rewards.redeem.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const rewardId = Number(req.params.rewardId);
+    
+    try {
+      const reward = await storage.getReward(rewardId);
+      if (!reward) return res.status(404).json({ message: "Reward not found" });
+      
+      const profile = await storage.getProfile(user.claims.sub);
+      if (!profile || profile.loyaltyPoints < reward.pointsRequired) {
+        return res.status(400).json({ message: "Insufficient points" });
+      }
+      
+      // Deduct points and create redemption
+      await storage.updateProfile(user.claims.sub, { 
+        loyaltyPoints: profile.loyaltyPoints - reward.pointsRequired 
+      });
+      
+      const redemption = await storage.createRedemption({
+        userId: user.claims.sub,
+        rewardId,
+        status: "pending"
+      });
+      
+      res.status(201).json(redemption);
+    } catch (err) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get(api.rewards.history.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const history = await storage.getUserRedemptions(user.claims.sub);
+    res.json(history);
   });
 
   // -- Vendors --

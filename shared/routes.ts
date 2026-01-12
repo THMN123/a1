@@ -48,11 +48,41 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/profiles/me',
-      input: insertProfileSchema.partial().omit({ userId: true }),
+      input: z.object({
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        bio: z.string().optional(),
+        profileImageUrl: z.string().optional(),
+      }),
       responses: {
         200: z.custom<typeof profiles.$inferSelect>(),
       },
     },
+  },
+
+  // Rewards
+  rewards: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/rewards',
+      responses: {
+        200: z.array(z.custom<typeof profiles.$inferSelect>()), // Using profile points for now
+      },
+    },
+    redeem: {
+      method: 'POST' as const,
+      path: '/api/rewards/redeem/:rewardId',
+      responses: {
+        201: z.any(),
+      },
+    },
+    history: {
+      method: 'GET' as const,
+      path: '/api/rewards/history',
+      responses: {
+        200: z.array(z.any()),
+      },
+    }
   },
 
   // Vendors

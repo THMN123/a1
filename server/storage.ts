@@ -12,6 +12,12 @@ export interface IStorage {
   createProfile(profile: any): Promise<Profile>;
   updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile>;
 
+  // Rewards & Redemptions
+  getRewards(): Promise<Reward[]>;
+  getReward(id: number): Promise<Reward | undefined>;
+  createRedemption(redemption: any): Promise<Redemption>;
+  getUserRedemptions(userId: string): Promise<(Redemption & { reward: Reward })[]>;
+
   // Vendors
   getVendors(): Promise<Vendor[]>;
   getVendor(id: number): Promise<Vendor | undefined>;
@@ -54,6 +60,33 @@ export class DatabaseStorage implements IStorage {
       .where(eq(profiles.userId, userId))
       .returning();
     return updated;
+  }
+
+  // Rewards & Redemptions
+  async getRewards(): Promise<Reward[]> {
+    return await db.select().from(rewards).where(eq(rewards.isActive, true));
+  }
+
+  async getReward(id: number): Promise<Reward | undefined> {
+    const [reward] = await db.select().from(rewards).where(eq(rewards.id, id));
+    return reward;
+  }
+
+  async createRedemption(redemption: any): Promise<Redemption> {
+    const [newRedemption] = await db.insert(redemptions).values(redemption).returning();
+    return newRedemption;
+  }
+
+  async getUserRedemptions(userId: string): Promise<(Redemption & { reward: Reward })[]> {
+    const results = await db.select()
+      .from(redemptions)
+      .innerJoin(rewards, eq(redemptions.rewardId, rewards.id))
+      .where(eq(redemptions.userId, userId));
+    
+    return results.map(r => ({
+      ...r.redemptions,
+      reward: r.rewards
+    }));
   }
 
   // Vendors
