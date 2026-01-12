@@ -102,8 +102,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile> {
+    const normalizedUpdates = { ...updates };
+    if (normalizedUpdates.profileImageUrl && !normalizedUpdates.profileImageUrl.startsWith('/') && !normalizedUpdates.profileImageUrl.startsWith('http')) {
+      normalizedUpdates.profileImageUrl = '/' + normalizedUpdates.profileImageUrl;
+    }
     const [updated] = await db.update(profiles)
-      .set(updates)
+      .set(normalizedUpdates)
       .where(eq(profiles.userId, userId))
       .returning();
     return updated;
