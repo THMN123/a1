@@ -103,9 +103,10 @@ export const orderItems = pgTable("order_items", {
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
-  endpoint: text("endpoint").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const inAppNotifications = pgTable("in_app_notifications", {
@@ -258,7 +259,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true })
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
-export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true });
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({ id: true, createdAt: true });
 export const insertInAppNotificationSchema = createInsertSchema(inAppNotifications).omit({ id: true, createdAt: true });
 export const insertSavedAddressSchema = createInsertSchema(savedAddresses).omit({ id: true });
 export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({ id: true });

@@ -40,3 +40,9 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_log_in_with_replit:2.0.0", "stripe:2.0.0", "javascript_object_storage:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BMraEvF9q6g9WuWSJqnoAjNexFEAg45mP_mHrRjhcm0o7D-9wFhqDq5MYkfn4TLupdIrts1hr3YbpLy7iDTEjDM"
+VAPID_SUBJECT = "mailto:admin@a1services.app"
