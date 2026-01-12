@@ -302,10 +302,8 @@ export async function registerRoutes(
     
     try {
       const input = api.notifications.subscribe.input.parse(req.body);
-      // Check if exists
       const existing = await storage.getPushSubscription(user.claims.sub);
       if (existing) {
-         // Update logic if needed, or just return existing
          res.status(200).json(existing);
       } else {
         const sub = await storage.createPushSubscription({ ...input, userId: user.claims.sub });
@@ -314,6 +312,58 @@ export async function registerRoutes(
     } catch (err) {
        if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
        res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // -- Wallet / Stripe --
+  app.get(api.wallet.stripeKey.path, async (req, res) => {
+    try {
+      const { getStripePublishableKey } = await import('./stripeClient');
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (err) {
+      res.status(500).json({ message: "Stripe not configured" });
+    }
+  });
+
+  app.post(api.wallet.topup.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+
+    try {
+      const { amount } = api.wallet.topup.input.parse(req.body);
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Wallet Top-Up: $${amount}`,
+              description: 'Add funds to your A1 Services wallet',
+            },
+            unit_amount: amount * 100, // Convert to cents
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${baseUrl}/profile?topup=success`,
+        cancel_url: `${baseUrl}/profile?topup=cancelled`,
+        metadata: {
+          userId: user.claims.sub,
+          walletAmount: amount.toString(),
+          type: 'wallet_topup',
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error('Stripe checkout error:', err);
+      res.status(500).json({ message: "Failed to create checkout session" });
     }
   });
 

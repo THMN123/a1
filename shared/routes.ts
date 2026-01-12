@@ -196,6 +196,25 @@ export const api = {
       },
     },
   },
+
+  // Wallet / Stripe
+  wallet: {
+    topup: {
+      method: 'POST' as const,
+      path: '/api/wallet/topup',
+      input: z.object({ amount: z.number().min(5).max(500) }),
+      responses: {
+        200: z.object({ url: z.string() }),
+      },
+    },
+    stripeKey: {
+      method: 'GET' as const,
+      path: '/api/stripe/publishable-key',
+      responses: {
+        200: z.object({ publishableKey: z.string() }),
+      },
+    },
+  },
 };
 
 // ============================================

@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profiles";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Wallet, Settings, Bell, ChevronRight, Store, MapPin, Info } from "lucide-react";
+import { LogOut, User, Wallet, Settings, Bell, ChevronRight, Store, MapPin } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,7 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { WalletTopUp } from "@/components/WalletTopUp";
+import { useLocation } from "wouter";
 
 const profileSchema = z.object({
   phone: z.string().optional(),
@@ -48,6 +50,19 @@ export default function Profile() {
   const { data: profile } = useProfile();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [location] = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('topup') === 'success') {
+      toast({ title: "Top-up successful!", description: "Your wallet has been credited." });
+      queryClient.invalidateQueries({ queryKey: ["/api/profiles/me"] });
+      window.history.replaceState({}, '', '/profile');
+    } else if (params.get('topup') === 'cancelled') {
+      toast({ title: "Top-up cancelled", description: "No payment was made.", variant: "destructive" });
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, [location, toast]);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -94,9 +109,10 @@ export default function Profile() {
 
       <main className="px-5 space-y-4">
         <div className="grid grid-cols-2 gap-4 mb-2">
-          <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col items-center justify-center gap-1">
+          <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col items-center justify-center gap-2">
             <span className="text-sm text-muted-foreground">Wallet</span>
             <span className="text-xl font-bold text-primary">${profile?.walletBalance || "0.00"}</span>
+            <WalletTopUp />
           </div>
           <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col items-center justify-center gap-1">
             <span className="text-sm text-muted-foreground">Points</span>
@@ -170,7 +186,6 @@ export default function Profile() {
           <>
             <ProfileItem icon={User} label="Personal Info" onClick={() => setIsEditing(true)} />
             <ProfileItem icon={MapPin} label="Saved Addresses" />
-            <ProfileItem icon={Wallet} label="Wallet" value="Top Up" />
             <ProfileItem icon={Bell} label="Notifications" />
             <ProfileItem icon={Store} label="Vendor Dashboard" />
             <ProfileItem icon={Settings} label="Settings" />
