@@ -236,6 +236,14 @@ export class DatabaseStorage implements IStorage {
 
   // Push Subscriptions
   async createPushSubscription(sub: CreatePushSubscriptionRequest & { userId: string }): Promise<PushSubscription> {
+    const existing = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint));
+    if (existing.length > 0) {
+      const [updated] = await db.update(pushSubscriptions)
+        .set({ userId: sub.userId, p256dh: sub.p256dh, auth: sub.auth })
+        .where(eq(pushSubscriptions.endpoint, sub.endpoint))
+        .returning();
+      return updated;
+    }
     const [newSub] = await db.insert(pushSubscriptions).values(sub).returning();
     return newSub;
   }
@@ -243,6 +251,14 @@ export class DatabaseStorage implements IStorage {
   async getPushSubscription(userId: string): Promise<PushSubscription | undefined> {
     const [sub] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     return sub;
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
   }
 
   // Saved Addresses
@@ -557,6 +573,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(inAppNotifications.userId, userId), eq(inAppNotifications.isRead, false)));
     return result?.count || 0;
   }
+
 }
 
 export const storage = new DatabaseStorage();

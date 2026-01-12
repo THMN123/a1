@@ -1,11 +1,12 @@
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Moon, Sun, Globe, Shield, HelpCircle, FileText, Trash2 } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Globe, Shield, HelpCircle, FileText, Trash2, Bell } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 function SettingRow({ icon: Icon, label, description, action }: any) {
   return (
@@ -29,11 +30,26 @@ export default function Settings() {
   const { toast } = useToast();
   const [isDark, setIsDark] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { isSupported, isSubscribed, permission, subscribe, unsubscribe, isLoading } = usePushNotifications();
 
   useEffect(() => {
     const dark = document.documentElement.classList.contains('dark');
     setIsDark(dark);
   }, []);
+
+  const handlePushToggle = async (enabled: boolean) => {
+    if (enabled) {
+      const success = await subscribe();
+      if (success) {
+        toast({ title: "Push notifications enabled", description: "You'll receive alerts for orders and updates" });
+      } else if (permission === 'denied') {
+        toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings", variant: "destructive" });
+      }
+    } else {
+      await unsubscribe();
+      toast({ title: "Push notifications disabled" });
+    }
+  };
 
   const toggleTheme = () => {
     const newDark = !isDark;
@@ -79,6 +95,38 @@ export default function Settings() {
               />
             }
           />
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">Notifications</h2>
+          {isSupported ? (
+            <SettingRow 
+              icon={Bell} 
+              label="Push Notifications" 
+              description={
+                permission === 'denied' 
+                  ? "Blocked in browser settings" 
+                  : isSubscribed 
+                    ? "Receive order updates and alerts" 
+                    : "Enable to receive order updates"
+              }
+              action={
+                <Switch 
+                  checked={isSubscribed} 
+                  onCheckedChange={handlePushToggle}
+                  disabled={isLoading || permission === 'denied'}
+                  data-testid="switch-push-notifications"
+                />
+              }
+            />
+          ) : (
+            <SettingRow 
+              icon={Bell} 
+              label="Push Notifications" 
+              description="Not supported in this browser"
+              action={null}
+            />
+          )}
         </div>
 
         <div className="space-y-2">

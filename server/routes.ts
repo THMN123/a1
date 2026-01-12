@@ -8,6 +8,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { db } from "./db";
 import { rewards, vendorCategories } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { sendPushNotification, getVapidPublicKey, isPushConfigured } from "./pushService";
 
 // Seed function
 async function seedDatabase() {
@@ -282,7 +283,7 @@ export async function registerRoutes(
 
       const order = await storage.createOrder(orderData, itemsData);
       
-      // Notify vendor about new order
+      // Notify vendor about new order (in-app + push)
       const vendor = await storage.getVendor(input.vendorId);
       if (vendor) {
         await storage.createNotification({
@@ -292,6 +293,15 @@ export async function registerRoutes(
           type: "order",
           data: { orderId: order.id, total: total.toFixed(2) }
         });
+        
+        // Send push notification to vendor
+        sendPushNotification(vendor.ownerId, {
+          title: "New Order!",
+          body: `You have a new order #${order.id} worth $${total.toFixed(2)}`,
+          url: "/vendor-dashboard",
+          tag: `order-${order.id}`,
+          data: { orderId: order.id }
+        }).catch(err => console.error('Push notification error:', err));
       }
       
       res.status(201).json(order);
@@ -376,25 +386,77 @@ export async function registerRoutes(
         type: "order",
         data: { orderId, status: req.body.status }
       });
+      
+      // Send push notification to customer
+      sendPushNotification(order.customerId, {
+        title: notifInfo.title,
+        body: notifInfo.message,
+        url: "/orders",
+        tag: `order-${orderId}-${req.body.status}`,
+        data: { orderId, status: req.body.status }
+      }).catch(err => console.error('Push notification error:', err));
     }
     
     res.json(updated);
   });
 
-  // -- Notifications --
+  // -- Push Notifications --
+  app.get('/api/push/public-key', (req, res) => {
+    const publicKey = getVapidPublicKey();
+    if (!publicKey) {
+      return res.status(503).json({ message: "Push notifications not configured" });
+    }
+    res.json({ publicKey });
+  });
+
+  app.post('/api/push/subscribe', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    
+    try {
+      const { endpoint, keys } = req.body;
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ message: "Invalid subscription data" });
+      }
+      
+      const sub = await storage.createPushSubscription({
+        userId: user.claims.sub,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth
+      });
+      res.status(201).json({ success: true, id: sub.id });
+    } catch (err) {
+      console.error('Push subscribe error:', err);
+      res.status(500).json({ message: "Failed to save subscription" });
+    }
+  });
+
+  app.post('/api/push/unsubscribe', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const { endpoint } = req.body;
+      if (!endpoint) {
+        return res.status(400).json({ message: "Endpoint required" });
+      }
+      
+      await storage.deletePushSubscription(endpoint);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+
+  // Legacy notification subscribe (backwards compatibility)
   app.post(api.notifications.subscribe.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     const user = req.user as any;
     
     try {
       const input = api.notifications.subscribe.input.parse(req.body);
-      const existing = await storage.getPushSubscription(user.claims.sub);
-      if (existing) {
-         res.status(200).json(existing);
-      } else {
-        const sub = await storage.createPushSubscription({ ...input, userId: user.claims.sub });
-        res.status(201).json(sub);
-      }
+      const sub = await storage.createPushSubscription({ ...input, userId: user.claims.sub });
+      res.status(201).json(sub);
     } catch (err) {
        if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
        res.status(500).json({ message: "Internal server error" });
