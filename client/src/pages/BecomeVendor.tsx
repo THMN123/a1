@@ -18,6 +18,9 @@ import type { VendorApplication } from "@shared/schema";
 const applicationSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
   businessType: z.string().min(1, "Business type is required"),
+  customBusinessType: z.string().optional(),
+  vendorType: z.enum(["product", "service"]).default("product"),
+  tags: z.string().optional(),
   description: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   phone: z.string().min(1, "Phone is required"),
@@ -33,12 +36,18 @@ export default function BecomeVendor() {
     defaultValues: {
       businessName: "",
       businessType: "",
+      customBusinessType: "",
+      vendorType: "product" as const,
+      tags: "",
       description: "",
       location: "",
       phone: "",
       email: "",
     },
   });
+
+  const selectedBusinessType = form.watch("businessType");
+  const selectedVendorType = form.watch("vendorType");
 
   const { data: application, isLoading } = useQuery<VendorApplication | null>({
     queryKey: ['/api/vendor-admin/application'],
@@ -207,25 +216,90 @@ export default function BecomeVendor() {
 
             <FormField
               control={form.control}
+              name="vendorType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>What do you offer?</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-vendor-type">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="product">Products (Food, Items, Goods)</SelectItem>
+                      <SelectItem value="service">Services (Print, Repair, Custom Work)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="businessType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Type</FormLabel>
+                  <FormLabel>Business Category</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-business-type">
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="food">Food & Beverages</SelectItem>
                       <SelectItem value="grocery">Groceries</SelectItem>
-                      <SelectItem value="services">Services</SelectItem>
+                      <SelectItem value="services">General Services</SelectItem>
                       <SelectItem value="fashion">Fashion & Apparel</SelectItem>
                       <SelectItem value="print">Print & Stationery</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="tech">Tech & Repairs</SelectItem>
+                      <SelectItem value="beauty">Beauty & Wellness</SelectItem>
+                      <SelectItem value="custom">Custom / Other</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedBusinessType === "custom" && (
+              <FormField
+                control={form.control}
+                name="customBusinessType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Your Business Type</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., Artisanal Mechanic, Custom Tailor..." 
+                        {...field} 
+                        data-testid="input-custom-business-type" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="tags"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Searchable Tags (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., plumber, electrician, fast delivery (comma separated)" 
+                      {...field} 
+                      data-testid="input-tags" 
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Help customers find you with relevant keywords
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -1,12 +1,12 @@
 import { 
   users, profiles, vendors, products, orders, orderItems, pushSubscriptions, rewards, redemptions, vendorCategories,
-  savedAddresses, notificationPreferences, vendorApplications, productCategories, vendorHours, promotions, platformMetrics, inAppNotifications,
+  savedAddresses, notificationPreferences, vendorApplications, productCategories, vendorHours, promotions, platformMetrics, inAppNotifications, serviceRequests,
   type User, type Profile, type Vendor, type Product, type Order, type OrderItem, type PushSubscription, type Reward, type Redemption, type VendorCategory,
-  type SavedAddress, type NotificationPreferences, type VendorApplication, type ProductCategory, type VendorHours, type Promotion, type PlatformMetrics, type InAppNotification,
+  type SavedAddress, type NotificationPreferences, type VendorApplication, type ProductCategory, type VendorHours, type Promotion, type PlatformMetrics, type InAppNotification, type ServiceRequest,
   type CreateVendorRequest, type CreateProductRequest, type CreateOrderRequest, type UpdateOrderStatusRequest, type CreatePushSubscriptionRequest
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, gte, lte, count, sum } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, count, sum, or, ilike, arrayContains } from "drizzle-orm";
 
 export interface IStorage {
   // Profiles
@@ -95,6 +95,17 @@ export interface IStorage {
   markNotificationRead(id: number, userId: string): Promise<InAppNotification | undefined>;
   markAllNotificationsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+
+  // Service Requests
+  createServiceRequest(request: Partial<ServiceRequest>): Promise<ServiceRequest>;
+  getServiceRequest(id: number): Promise<ServiceRequest | undefined>;
+  getServiceRequestsByCustomerId(customerId: string): Promise<ServiceRequest[]>;
+  getServiceRequestsByVendorId(vendorId: number): Promise<ServiceRequest[]>;
+  updateServiceRequest(id: number, updates: Partial<ServiceRequest>): Promise<ServiceRequest | undefined>;
+
+  // Fuzzy Search
+  fuzzySearch(query: string, vendorType?: string): Promise<{ vendors: Vendor[]; products: (Product & { vendor: Vendor })[] }>;
+  getVendorsByCategory(categoryId: number): Promise<Vendor[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -577,6 +588,110 @@ export class DatabaseStorage implements IStorage {
       .from(inAppNotifications)
       .where(and(eq(inAppNotifications.userId, userId), eq(inAppNotifications.isRead, false)));
     return result?.count || 0;
+  }
+
+  // Service Requests
+  async createServiceRequest(request: Partial<ServiceRequest>): Promise<ServiceRequest> {
+    const [newRequest] = await db.insert(serviceRequests).values(request as any).returning();
+    return newRequest;
+  }
+
+  async getServiceRequest(id: number): Promise<ServiceRequest | undefined> {
+    const [request] = await db.select().from(serviceRequests).where(eq(serviceRequests.id, id));
+    return request;
+  }
+
+  async getServiceRequestsByCustomerId(customerId: string): Promise<ServiceRequest[]> {
+    return await db.select().from(serviceRequests)
+      .where(eq(serviceRequests.customerId, customerId))
+      .orderBy(desc(serviceRequests.createdAt));
+  }
+
+  async getServiceRequestsByVendorId(vendorId: number): Promise<ServiceRequest[]> {
+    return await db.select().from(serviceRequests)
+      .where(eq(serviceRequests.vendorId, vendorId))
+      .orderBy(desc(serviceRequests.createdAt));
+  }
+
+  async updateServiceRequest(id: number, updates: Partial<ServiceRequest>): Promise<ServiceRequest | undefined> {
+    const [updated] = await db.update(serviceRequests)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(serviceRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Fuzzy Search - Business-first with ILIKE for case-insensitive matching
+  async fuzzySearch(query: string, vendorType?: string): Promise<{ vendors: Vendor[]; products: (Product & { vendor: Vendor })[] }> {
+    const searchTerm = `%${query}%`;
+    
+    // Build base vendor search conditions
+    const vendorConditions = or(
+      ilike(vendors.name, searchTerm),
+      ilike(vendors.description, searchTerm),
+      ilike(vendors.customBusinessType, searchTerm),
+      ilike(vendors.location, searchTerm)
+    );
+    
+    // Search vendors by name, description, custom business type, and tags
+    let matchingVendors = await db.select().from(vendors).where(vendorConditions);
+
+    // Also check tags (array column needs special handling)
+    const allVendors = await db.select().from(vendors);
+    const tagMatchVendors = allVendors.filter(v => 
+      v.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+    );
+    
+    // Merge and deduplicate vendors
+    const vendorIds = new Set(matchingVendors.map(v => v.id));
+    let mergedVendors = [...matchingVendors];
+    tagMatchVendors.forEach(v => {
+      if (!vendorIds.has(v.id)) {
+        mergedVendors.push(v);
+        vendorIds.add(v.id);
+      }
+    });
+
+    // Apply vendorType filter if provided
+    if (vendorType && (vendorType === 'product' || vendorType === 'service')) {
+      mergedVendors = mergedVendors.filter(v => v.vendorType === vendorType);
+    }
+
+    // Search products (only if not filtering for services only)
+    let productsWithVendor: (Product & { vendor: Vendor })[] = [];
+    if (vendorType !== 'service') {
+      const matchingProducts = await db.select().from(products).where(
+        or(
+          ilike(products.name, searchTerm),
+          ilike(products.description, searchTerm),
+          ilike(products.category, searchTerm)
+        )
+      );
+
+      // Get vendors for products
+      const productVendorIds = Array.from(new Set(matchingProducts.map(p => p.vendorId)));
+      const productVendors = productVendorIds.length > 0 
+        ? await db.select().from(vendors).where(sql`${vendors.id} IN (${sql.raw(productVendorIds.join(','))})`)
+        : [];
+      
+      const vendorMap = new Map(productVendors.map(v => [v.id, v]));
+      productsWithVendor = matchingProducts
+        .filter(p => vendorMap.has(p.vendorId))
+        .map(p => ({
+          ...p,
+          vendor: vendorMap.get(p.vendorId)!
+        }));
+    }
+
+    return {
+      vendors: mergedVendors,
+      products: productsWithVendor
+    };
+  }
+
+  // Get vendors by category (shows vendors even without listed products)
+  async getVendorsByCategory(categoryId: number): Promise<Vendor[]> {
+    return await db.select().from(vendors).where(eq(vendors.categoryId, categoryId));
   }
 
 }

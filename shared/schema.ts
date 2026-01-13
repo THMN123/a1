@@ -66,6 +66,10 @@ export const vendors = pgTable("vendors", {
   isOpen: boolean("is_open").default(false).notNull(),
   isFeatured: boolean("is_featured").default(false).notNull(),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("5.00").notNull(),
+  vendorType: text("vendor_type", { enum: ["product", "service"] }).default("product").notNull(),
+  customBusinessType: text("custom_business_type"),
+  tags: text("tags").array(),
+  portfolioImages: text("portfolio_images").array(),
 });
 
 export const products = pgTable("products", {
@@ -146,6 +150,9 @@ export const vendorApplications = pgTable("vendor_applications", {
   userId: varchar("user_id").notNull().references(() => users.id),
   businessName: text("business_name").notNull(),
   businessType: text("business_type").notNull(),
+  vendorType: text("vendor_type", { enum: ["product", "service"] }).default("product").notNull(),
+  customBusinessType: text("custom_business_type"),
+  tags: text("tags").array(),
   description: text("description"),
   location: text("location").notNull(),
   phone: text("phone").notNull(),
@@ -183,6 +190,22 @@ export const platformMetrics = pgTable("platform_metrics", {
   totalVendors: integer("total_vendors").default(0).notNull(),
   newUsers: integer("new_users").default(0).notNull(),
   activeUsers: integer("active_users").default(0).notNull(),
+});
+
+export const serviceRequests = pgTable("service_requests", {
+  id: serial("id").primaryKey(),
+  customerId: varchar("customer_id").notNull().references(() => users.id),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id),
+  serviceName: text("service_name").notNull(),
+  description: text("description"),
+  attachments: text("attachments").array(),
+  status: text("status", { 
+    enum: ["pending", "quoted", "accepted", "in_progress", "completed", "cancelled"] 
+  }).default("pending").notNull(),
+  quotedPrice: decimal("quoted_price", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const promotions = pgTable("promotions", {
@@ -267,6 +290,7 @@ export const insertVendorApplicationSchema = createInsertSchema(vendorApplicatio
 export const insertProductCategorySchema = createInsertSchema(productCategories).omit({ id: true });
 export const insertVendorHoursSchema = createInsertSchema(vendorHours).omit({ id: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, usageCount: true });
+export const insertServiceRequestSchema = createInsertSchema(serviceRequests).omit({ id: true, createdAt: true, updatedAt: true, status: true, quotedPrice: true });
 
 // === EXPLICIT API TYPES ===
 
@@ -287,6 +311,7 @@ export type ProductCategory = typeof productCategories.$inferSelect;
 export type VendorHours = typeof vendorHours.$inferSelect;
 export type PlatformMetrics = typeof platformMetrics.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
+export type ServiceRequest = typeof serviceRequests.$inferSelect;
 
 export type CreateVendorRequest = z.infer<typeof insertVendorSchema>;
 export type CreateProductRequest = z.infer<typeof insertProductSchema>;

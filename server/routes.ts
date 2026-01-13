@@ -224,6 +224,30 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // -- Fuzzy Search --
+  app.get('/api/search', async (req, res) => {
+    const query = (req.query.q as string) || '';
+    const vendorType = req.query.type as string | undefined;
+    
+    if (!query.trim()) {
+      return res.json({ vendors: [], products: [] });
+    }
+    
+    // Validate vendorType if provided
+    const validTypes = ['product', 'service'];
+    const filterType = vendorType && validTypes.includes(vendorType) ? vendorType : undefined;
+    
+    const results = await storage.fuzzySearch(query.trim(), filterType);
+    res.json(results);
+  });
+
+  // -- Vendors by Category --
+  app.get('/api/vendors/category/:categoryId', async (req, res) => {
+    const categoryId = Number(req.params.categoryId);
+    const categoryVendors = await storage.getVendorsByCategory(categoryId);
+    res.json(categoryVendors);
+  });
+
   // -- Products --
   app.get('/api/products', async (req, res) => {
     const products = await storage.getAllProducts();
@@ -403,6 +427,107 @@ export async function registerRoutes(
     }
     
     res.json(updated);
+  });
+
+  // -- Service Requests (for service vendors) --
+  app.post('/api/service-requests', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+
+    try {
+      const { vendorId, serviceName, description, attachments } = req.body;
+      
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+
+      const serviceRequest = await storage.createServiceRequest({
+        customerId: user.claims.sub,
+        vendorId,
+        serviceName,
+        description,
+        attachments: attachments || []
+      });
+
+      // Notify vendor
+      await storage.createNotification({
+        userId: vendor.ownerId,
+        title: "New Service Request!",
+        message: `You have a new service request for "${serviceName}"`,
+        type: "order",
+        data: { serviceRequestId: serviceRequest.id, serviceName }
+      });
+
+      sendPushNotification(vendor.ownerId, {
+        title: "New Service Request!",
+        body: `You have a new service request for "${serviceName}"`,
+        url: "/vendor-dashboard",
+        tag: `service-${serviceRequest.id}`,
+        data: { serviceRequestId: serviceRequest.id }
+      }).catch(err => console.error('Push notification error:', err));
+
+      res.status(201).json(serviceRequest);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create service request" });
+    }
+  });
+
+  app.get('/api/service-requests/mine', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const requests = await storage.getServiceRequestsByCustomerId(user.claims.sub);
+    res.json(requests);
+  });
+
+  app.get('/api/service-requests/vendor/:vendorId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const vendorId = Number(req.params.vendorId);
+    
+    const vendor = await storage.getVendor(vendorId);
+    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if (vendor.ownerId !== user.claims.sub) return res.status(403).json({ message: "Forbidden" });
+
+    const requests = await storage.getServiceRequestsByVendorId(vendorId);
+    res.json(requests);
+  });
+
+  app.patch('/api/service-requests/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const id = Number(req.params.id);
+
+    try {
+      // Fetch the service request to check authorization
+      const existingRequest = await storage.getServiceRequest(id);
+      if (!existingRequest) return res.status(404).json({ message: "Service request not found" });
+      
+      // Check if user is the customer or the vendor owner
+      const vendor = await storage.getVendor(existingRequest.vendorId);
+      const isCustomer = existingRequest.customerId === user.claims.sub;
+      const isVendorOwner = vendor && vendor.ownerId === user.claims.sub;
+      
+      if (!isCustomer && !isVendorOwner) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updated = await storage.updateServiceRequest(id, req.body);
+      if (!updated) return res.status(404).json({ message: "Service request not found" });
+      
+      // Notify customer of status change (only if vendor is updating)
+      if (req.body.status && isVendorOwner) {
+        await storage.createNotification({
+          userId: updated.customerId,
+          title: "Service Request Updated",
+          message: `Your service request for "${updated.serviceName}" is now ${req.body.status}`,
+          type: "order",
+          data: { serviceRequestId: id, status: req.body.status }
+        });
+      }
+      
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update service request" });
+    }
   });
 
   // -- Push Notifications --
@@ -648,8 +773,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Application already submitted" });
       }
       
+      // Parse tags from comma-separated string to array
+      const tags = req.body.tags 
+        ? req.body.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+        : [];
+      
       const application = await storage.createVendorApplication({
         ...req.body,
+        tags,
         userId: user.claims.sub,
       });
       res.status(201).json(application);
@@ -828,13 +959,16 @@ export async function registerRoutes(
     
     if (!application) return res.status(404).json({ message: "Application not found" });
     
-    // Create vendor from application
+    // Create vendor from application with all new fields
     const vendor = await storage.createVendor({
       ownerId: application.userId,
       name: application.businessName,
       description: application.description || '',
       location: application.location,
       imageUrl: application.logoUrl || '',
+      vendorType: application.vendorType || 'product',
+      customBusinessType: application.customBusinessType || null,
+      tags: application.tags || [],
     });
     
     // Update user role to vendor (but preserve admin role)

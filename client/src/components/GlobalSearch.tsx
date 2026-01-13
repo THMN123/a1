@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Search, X, Store, Package, Filter, Loader2 } from "lucide-react";
+import { Search, X, Store, Package, Filter, Loader2, Briefcase, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,50 +14,78 @@ interface VendorCategory {
   icon: string;
 }
 
-type SearchType = "all" | "shops" | "products";
+interface SearchResults {
+  vendors: Vendor[];
+  products: (Product & { vendor: Vendor })[];
+}
+
+type SearchType = "all" | "shops" | "products" | "services";
 
 export function GlobalSearch() {
   const [, navigate] = useLocation();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [searchType, setSearchType] = useState<SearchType>("all");
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
-  });
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+  // Map searchType to backend vendorType filter
+  const vendorTypeFilter = useMemo(() => {
+    if (searchType === "services") return "service";
+    if (searchType === "shops") return "product";
+    return undefined;
+  }, [searchType]);
+
+  const { data: searchResults, isLoading: isSearching } = useQuery<SearchResults>({
+    queryKey: ["/api/search", debouncedQuery, vendorTypeFilter],
+    queryFn: async () => {
+      if (!debouncedQuery.trim()) return { vendors: [], products: [] };
+      let url = `/api/search?q=${encodeURIComponent(debouncedQuery)}`;
+      if (vendorTypeFilter) {
+        url += `&type=${vendorTypeFilter}`;
+      }
+      const res = await fetch(url);
+      return res.json();
+    },
+    enabled: debouncedQuery.length > 0,
   });
 
   const { data: categories = [] } = useQuery<VendorCategory[]>({
     queryKey: ["/api/categories"],
   });
 
-  const filteredVendors = vendors.filter((vendor) => {
-    const matchesQuery = query === "" || 
-      vendor.name.toLowerCase().includes(query.toLowerCase()) ||
-      vendor.description?.toLowerCase().includes(query.toLowerCase());
-    const matchesCategory = selectedCategory === null || vendor.categoryId === selectedCategory;
-    return matchesQuery && matchesCategory;
-  });
+  const filteredVendors = useMemo(() => {
+    let results = searchResults?.vendors || [];
+    if (selectedCategory !== null) {
+      results = results.filter(v => v.categoryId === selectedCategory);
+    }
+    if (searchType === "services") {
+      results = results.filter(v => v.vendorType === "service");
+    } else if (searchType === "shops") {
+      results = results.filter(v => v.vendorType === "product");
+    }
+    return results;
+  }, [searchResults, selectedCategory, searchType]);
 
-  const filteredProducts = products.filter((product) => {
-    const matchesQuery = query === "" || 
-      product.name.toLowerCase().includes(query.toLowerCase()) ||
-      product.description?.toLowerCase().includes(query.toLowerCase());
-    const vendor = vendors.find(v => v.id === product.vendorId);
-    const matchesCategory = selectedCategory === null || vendor?.categoryId === selectedCategory;
-    return matchesQuery && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    if (searchType === "services") return [];
+    let results = searchResults?.products || [];
+    if (selectedCategory !== null) {
+      results = results.filter(p => p.vendor.categoryId === selectedCategory);
+    }
+    return results;
+  }, [searchResults, selectedCategory, searchType]);
 
-  const showVendors = searchType === "all" || searchType === "shops";
+  const showVendors = searchType === "all" || searchType === "shops" || searchType === "services";
   const showProducts = searchType === "all" || searchType === "products";
 
   const hasResults = (showVendors && filteredVendors.length > 0) || (showProducts && filteredProducts.length > 0);
-  const showResults = isOpen && query.length > 0;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -116,7 +144,7 @@ export function GlobalSearch() {
           >
             <div className="p-3 border-b border-border/50">
               <div className="flex gap-2 mb-3">
-                {(["all", "shops", "products"] as SearchType[]).map((type) => (
+                {(["all", "shops", "services", "products"] as SearchType[]).map((type) => (
                   <button
                     key={type}
                     onClick={() => setSearchType(type)}
@@ -128,7 +156,7 @@ export function GlobalSearch() {
                     )}
                     data-testid={`filter-${type}`}
                   >
-                    {type === "all" ? "All" : type === "shops" ? "Shops" : "Products"}
+                    {type === "all" ? "All" : type === "shops" ? "Shops" : type === "services" ? "Services" : "Products"}
                   </button>
                 ))}
               </div>
@@ -178,7 +206,7 @@ export function GlobalSearch() {
                     <div className="p-3">
                       <div className="flex items-center gap-2 mb-2 text-xs font-medium text-muted-foreground uppercase">
                         <Store className="w-3 h-3" />
-                        Shops ({filteredVendors.length})
+                        {searchType === "services" ? "Services" : "Shops & Services"} ({filteredVendors.length})
                       </div>
                       {filteredVendors.slice(0, 5).map((vendor) => (
                         <button
@@ -195,11 +223,29 @@ export function GlobalSearch() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{vendor.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{vendor.description}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate">{vendor.name}</p>
+                              {vendor.vendorType === "service" && (
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">
+                                  Service
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {vendor.customBusinessType || vendor.description}
+                            </p>
+                            {vendor.tags && vendor.tags.length > 0 && (
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {vendor.tags.slice(0, 3).map((tag, i) => (
+                                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           {vendor.isOpen && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex-shrink-0">
                               Open
                             </Badge>
                           )}
