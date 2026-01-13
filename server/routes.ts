@@ -225,6 +225,11 @@ export async function registerRoutes(
   });
 
   // -- Products --
+  app.get('/api/products', async (req, res) => {
+    const products = await storage.getAllProducts();
+    res.json(products);
+  });
+
   app.get(api.products.listByVendor.path, async (req, res) => {
     const products = await storage.getProductsByVendorId(Number(req.params.vendorId));
     res.json(products);

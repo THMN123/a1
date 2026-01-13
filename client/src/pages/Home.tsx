@@ -4,8 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { VendorCard } from "@/components/VendorCard";
 import { BottomNav } from "@/components/BottomNav";
 import { NotificationBell } from "@/components/NotificationBell";
-import { Search, Filter, Star, Clock, TrendingUp, Sparkles, Compass } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { Star, TrendingUp, Sparkles, Compass } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import type { Product, Vendor } from "@shared/schema";
@@ -82,18 +82,8 @@ export default function Home() {
           <NotificationBell />
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search food, shops, services..." 
-            className="pl-10 pr-10 h-12 rounded-xl bg-muted/50 border-transparent focus:bg-white focus:border-primary/50 transition-all"
-            data-testid="input-search"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white rounded-lg shadow-sm border border-border/50 cursor-pointer hover:border-primary/50">
-            <Filter className="w-4 h-4 text-foreground" />
-          </div>
-        </div>
+        {/* Global Search */}
+        <GlobalSearch />
       </header>
 
       <main className="px-5 space-y-8 mt-6">
