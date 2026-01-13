@@ -74,7 +74,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="px-5 pt-14 pb-4 bg-white sticky top-0 z-40 border-b border-border/40 backdrop-blur-xl bg-white/80">
+      <header className="px-5 pt-14 pb-4 sticky top-0 z-40 border-b border-border/40 backdrop-blur-xl bg-background/95">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <img 
