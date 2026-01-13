@@ -63,23 +63,47 @@ export default function VendorDetails() {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/objects/upload', {
+        
+        // Step 1: Request presigned URL with file metadata
+        const urlResponse = await fetch('/api/uploads/request-url', {
           method: 'POST',
-          body: formData,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: file.name,
+            size: file.size,
+            contentType: file.type || 'application/octet-stream',
+          }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setUploadedFiles(prev => [...prev, { name: file.name, url: data.url }]);
+        if (!urlResponse.ok) {
+          throw new Error('Failed to get upload URL');
         }
+
+        const { uploadURL, objectPath } = await urlResponse.json();
+
+        // Step 2: Upload file directly to presigned URL
+        const uploadResponse = await fetch(uploadURL, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        // Store the object path for retrieval later
+        setUploadedFiles(prev => [...prev, { name: file.name, url: objectPath }]);
       }
     } catch (err) {
-      toast({ title: "Upload failed", variant: "destructive" });
+      console.error('Upload error:', err);
+      toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
     } finally {
       setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
