@@ -1,9 +1,10 @@
 import { useMyOrders } from "@/hooks/use-orders";
 import { BottomNav } from "@/components/BottomNav";
+import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { Loader2, Package, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Order } from "@shared/routes";
+import type { Order } from "@shared/schema";
 
 function StatusBadge({ status }: { status: Order["status"] }) {
   const styles = {
@@ -43,7 +44,10 @@ export default function Orders() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <header className="px-5 pt-14 pb-4 sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/40">
-        <h1 className="text-3xl font-display font-bold">My Orders</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-display font-bold">My Orders</h1>
+          <ProfileSwitcher />
+        </div>
       </header>
 
       <main className="px-5 mt-6 space-y-4">

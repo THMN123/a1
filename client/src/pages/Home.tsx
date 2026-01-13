@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { VendorCard } from "@/components/VendorCard";
 import { BottomNav } from "@/components/BottomNav";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { Star, TrendingUp, Sparkles, Compass } from "lucide-react";
 import { motion } from "framer-motion";
@@ -79,7 +80,10 @@ export default function Home() {
               {user?.firstName || "Guest"}
             </h1>
           </div>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <ProfileSwitcher />
+            <NotificationBell />
+          </div>
         </div>
 
         {/* Global Search */}

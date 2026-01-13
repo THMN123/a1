@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/BottomNav";
+import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { Search, MapPin, Star, Clock, ChevronRight, Loader2, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
@@ -47,9 +48,12 @@ export default function Shops() {
             <h1 className="text-3xl font-display font-bold">Shops</h1>
             <p className="text-muted-foreground text-sm">Discover amazing vendors</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span>Campus</span>
+          <div className="flex items-center gap-3">
+            <ProfileSwitcher />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span>Campus</span>
+            </div>
           </div>
         </div>
         
