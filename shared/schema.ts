@@ -70,6 +70,8 @@ export const vendors = pgTable("vendors", {
   customBusinessType: text("custom_business_type"),
   tags: text("tags").array(),
   portfolioImages: text("portfolio_images").array(),
+  offersPickup: boolean("offers_pickup").default(true).notNull(),
+  offersDelivery: boolean("offers_delivery").default(false).notNull(),
 });
 
 export const products = pgTable("products", {
@@ -93,6 +95,8 @@ export const orders = pgTable("orders", {
   }).default("pending").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: text("payment_method", { enum: ["cash", "wallet", "mobile_money"] }).notNull(),
+  fulfillmentMethod: text("fulfillment_method", { enum: ["pickup", "delivery"] }).default("pickup").notNull(),
+  deliveryAddress: text("delivery_address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
