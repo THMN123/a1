@@ -302,10 +302,24 @@ export async function registerRoutes(
         });
       }
 
+      // Validate fulfillment method against vendor settings
+      const vendor = await storage.getVendor(input.vendorId);
+      if (!vendor) throw new Error("Vendor not found");
+      
+      const fulfillmentMethod = input.fulfillmentMethod || "pickup";
+      if (fulfillmentMethod === "delivery" && !vendor.offersDelivery) {
+        return res.status(400).json({ message: "This vendor does not offer delivery" });
+      }
+      if (fulfillmentMethod === "pickup" && !vendor.offersPickup) {
+        return res.status(400).json({ message: "This vendor does not offer pickup" });
+      }
+
       const orderData = {
         customerId: user.claims.sub,
         vendorId: input.vendorId,
         paymentMethod: input.paymentMethod,
+        fulfillmentMethod,
+        deliveryAddress: fulfillmentMethod === "delivery" ? input.deliveryAddress : null,
         totalAmount: total.toFixed(2),
         status: "pending"
       };
@@ -313,7 +327,6 @@ export async function registerRoutes(
       const order = await storage.createOrder(orderData, itemsData);
       
       // Notify vendor about new order (in-app + push)
-      const vendor = await storage.getVendor(input.vendorId);
       if (vendor) {
         await storage.createNotification({
           userId: vendor.ownerId,

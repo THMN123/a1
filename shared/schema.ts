@@ -326,6 +326,8 @@ export const createOrderRequestSchema = insertOrderSchema.extend({
     productId: z.number(),
     quantity: z.number().min(1),
   })),
+  fulfillmentMethod: z.enum(["pickup", "delivery"]).optional(),
+  deliveryAddress: z.string().optional(),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 

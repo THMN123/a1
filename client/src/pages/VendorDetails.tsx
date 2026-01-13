@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useVendor, useVendorProducts } from "@/hooks/use-vendors";
 import { useCreateOrder } from "@/hooks/use-orders";
 import { ProductCard } from "@/components/ProductCard";
-import { ArrowLeft, Star, ShoppingBag, Loader2, Briefcase, Upload, FileText, X, Image as ImageIcon, Calendar, Send } from "lucide-react";
+import { ArrowLeft, Star, ShoppingBag, Loader2, Briefcase, Upload, FileText, X, Image as ImageIcon, Calendar, Send, MapPin, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,10 +26,13 @@ export default function VendorDetails() {
 
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [bookingData, setBookingData] = useState({ serviceName: "", description: "" });
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<"pickup" | "delivery">("pickup");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
 
   const isServiceVendor = vendor?.vendorType === "service";
 
@@ -119,28 +122,47 @@ export default function VendorDetails() {
   const cartTotal = cart.reduce((sum, item) => sum + (Number(item.product.price) * item.quantity), 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const openCheckout = () => {
+    if (cart.length === 0) return;
+    // Set default fulfillment method based on what vendor offers
+    if (vendor?.offersPickup) {
+      setFulfillmentMethod("pickup");
+    } else if (vendor?.offersDelivery) {
+      setFulfillmentMethod("delivery");
+    }
+    setCheckoutOpen(true);
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) return;
+    if (fulfillmentMethod === "delivery" && !deliveryAddress.trim()) {
+      toast({ title: "Please enter a delivery address", variant: "destructive" });
+      return;
+    }
     
     createOrder({
       vendorId,
       paymentMethod: "wallet",
+      fulfillmentMethod,
+      deliveryAddress: fulfillmentMethod === "delivery" ? deliveryAddress : undefined,
       items: cart.map(item => ({
         productId: item.product.id,
         quantity: item.quantity
       }))
     }, {
       onSuccess: () => {
+        setCheckoutOpen(false);
+        setCart([]);
         toast({
           title: "Order Placed!",
-          description: "Track your order in the Orders tab.",
+          description: `Your order will be ready for ${fulfillmentMethod === "pickup" ? "pickup" : "delivery"}.`,
         });
         setLocation("/orders");
       },
-      onError: () => {
+      onError: (error: any) => {
         toast({
           title: "Error",
-          description: "Failed to place order. Please try again.",
+          description: error?.message || "Failed to place order. Please try again.",
           variant: "destructive"
         });
       }
@@ -389,9 +411,10 @@ export default function VendorDetails() {
             className="fixed bottom-8 left-5 right-5 z-50"
           >
             <Button 
-              onClick={handleCheckout}
+              onClick={openCheckout}
               disabled={creatingOrder}
               className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 flex items-center justify-between px-6 text-lg font-bold"
+              data-testid="button-open-checkout"
             >
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 px-3 py-1 rounded-full text-sm">
@@ -399,7 +422,7 @@ export default function VendorDetails() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span>View Cart</span>
+                <span>Checkout</span>
                 <span className="opacity-60">|</span>
                 <span>LSL {cartTotal.toFixed(2)}</span>
               </div>
@@ -407,6 +430,110 @@ export default function VendorDetails() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Checkout Dialog */}
+      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Complete Your Order</DialogTitle>
+            <DialogDescription>
+              Choose how you want to receive your order
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Order Summary */}
+            <div className="bg-muted/50 rounded-xl p-4">
+              <h4 className="font-medium mb-3">Order Summary</h4>
+              <div className="space-y-2 text-sm">
+                {cart.map(item => (
+                  <div key={item.product.id} className="flex justify-between">
+                    <span>{item.quantity}x {item.product.name}</span>
+                    <span>LSL {(Number(item.product.price) * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 mt-2 font-bold flex justify-between">
+                  <span>Total</span>
+                  <span>LSL {cartTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Fulfillment Method Selection */}
+            <div>
+              <h4 className="font-medium mb-3">How would you like to receive your order?</h4>
+              <div className="grid gap-3">
+                {vendor?.offersPickup && (
+                  <button
+                    onClick={() => setFulfillmentMethod("pickup")}
+                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                      fulfillmentMethod === "pickup" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    data-testid="button-pickup"
+                  >
+                    <div className={`p-3 rounded-full ${fulfillmentMethod === "pickup" ? "bg-primary text-white" : "bg-muted"}`}>
+                      <Package className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Pickup</div>
+                      <div className="text-sm text-muted-foreground">Collect from {vendor?.location}</div>
+                    </div>
+                  </button>
+                )}
+                
+                {vendor?.offersDelivery && (
+                  <button
+                    onClick={() => setFulfillmentMethod("delivery")}
+                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                      fulfillmentMethod === "delivery" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}
+                    data-testid="button-delivery"
+                  >
+                    <div className={`p-3 rounded-full ${fulfillmentMethod === "delivery" ? "bg-primary text-white" : "bg-muted"}`}>
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Delivery</div>
+                      <div className="text-sm text-muted-foreground">We'll bring it to you</div>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Delivery Address Input */}
+            {fulfillmentMethod === "delivery" && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">Delivery Address</label>
+                <Textarea
+                  placeholder="Enter your delivery address..."
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="resize-none"
+                  data-testid="input-delivery-address"
+                />
+              </div>
+            )}
+
+            {/* Place Order Button */}
+            <Button
+              onClick={handleCheckout}
+              disabled={creatingOrder}
+              className="w-full h-12"
+              data-testid="button-place-order"
+            >
+              {creatingOrder ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Place Order - LSL {cartTotal.toFixed(2)}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
