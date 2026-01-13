@@ -415,6 +415,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProduct(id: number): Promise<boolean> {
+    // Check if product has any order items referencing it
+    const existingOrderItems = await db.select({ count: count() })
+      .from(orderItems)
+      .where(eq(orderItems.productId, id));
+    
+    if (existingOrderItems[0]?.count > 0) {
+      // Soft delete - mark as unavailable instead of deleting
+      await db.update(products)
+        .set({ isAvailable: false })
+        .where(eq(products.id, id));
+      return true;
+    }
+    
+    // Hard delete if no orders reference this product
     await db.delete(products).where(eq(products.id, id));
     return true;
   }
