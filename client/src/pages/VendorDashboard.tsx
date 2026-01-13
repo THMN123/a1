@@ -4,14 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Store, Package, DollarSign, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Store, Package, DollarSign, Clock, CheckCircle, XCircle, Loader2, Bell, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import type { Vendor, Order } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
@@ -83,6 +85,8 @@ export default function VendorDashboard() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isSupported, isSubscribed, permission, subscribe, isLoading: pushLoading } = usePushNotifications();
+  const [showPushBanner, setShowPushBanner] = useState(true);
 
   const { data: vendors = [], isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -198,6 +202,38 @@ export default function VendorDashboard() {
       </header>
 
       <main className="px-5 py-6 space-y-6">
+        {isSupported && !isSubscribed && showPushBanner && permission !== 'denied' && (
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3 relative">
+            <Bell className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Enable Push Notifications</p>
+              <p className="text-xs text-muted-foreground mb-2">Get instant alerts when customers place orders</p>
+              <Button 
+                size="sm" 
+                onClick={async () => {
+                  const success = await subscribe();
+                  if (success) {
+                    toast({ title: "Notifications enabled!", description: "You'll now receive order alerts" });
+                    setShowPushBanner(false);
+                  }
+                }}
+                disabled={pushLoading}
+                data-testid="button-enable-push"
+              >
+                <Bell className="w-4 h-4 mr-1" />
+                Enable Notifications
+              </Button>
+            </div>
+            <button 
+              onClick={() => setShowPushBanner(false)}
+              className="absolute top-2 right-2 p-1 hover:bg-black/10 rounded"
+              data-testid="button-dismiss-push-banner"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
