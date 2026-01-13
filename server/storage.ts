@@ -625,37 +625,25 @@ export class DatabaseStorage implements IStorage {
   async fuzzySearch(query: string, vendorType?: string): Promise<{ vendors: Vendor[]; products: (Product & { vendor: Vendor })[] }> {
     const searchTerm = `%${query}%`;
     
-    // Build base vendor search conditions
-    const vendorConditions = or(
-      ilike(vendors.name, searchTerm),
-      ilike(vendors.description, searchTerm),
-      ilike(vendors.customBusinessType, searchTerm),
-      ilike(vendors.location, searchTerm)
-    );
+    // Build vendor type condition
+    const typeCondition = vendorType && (vendorType === 'product' || vendorType === 'service')
+      ? eq(vendors.vendorType, vendorType)
+      : undefined;
     
-    // Search vendors by name, description, custom business type, and tags
-    let matchingVendors = await db.select().from(vendors).where(vendorConditions);
-
-    // Also check tags (array column needs special handling)
-    const allVendors = await db.select().from(vendors);
-    const tagMatchVendors = allVendors.filter(v => 
-      v.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+    // Search vendors by name, description, custom business type, location, and tags using single query
+    // Use array_to_string for tag searching in PostgreSQL
+    let matchingVendors = await db.select().from(vendors).where(
+      and(
+        or(
+          ilike(vendors.name, searchTerm),
+          ilike(vendors.description, searchTerm),
+          ilike(vendors.customBusinessType, searchTerm),
+          ilike(vendors.location, searchTerm),
+          sql`array_to_string(${vendors.tags}, ' ') ILIKE ${searchTerm}`
+        ),
+        typeCondition
+      )
     );
-    
-    // Merge and deduplicate vendors
-    const vendorIds = new Set(matchingVendors.map(v => v.id));
-    let mergedVendors = [...matchingVendors];
-    tagMatchVendors.forEach(v => {
-      if (!vendorIds.has(v.id)) {
-        mergedVendors.push(v);
-        vendorIds.add(v.id);
-      }
-    });
-
-    // Apply vendorType filter if provided
-    if (vendorType && (vendorType === 'product' || vendorType === 'service')) {
-      mergedVendors = mergedVendors.filter(v => v.vendorType === vendorType);
-    }
 
     // Search products (only if not filtering for services only)
     let productsWithVendor: (Product & { vendor: Vendor })[] = [];
@@ -668,23 +656,25 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-      // Get vendors for products
-      const productVendorIds = Array.from(new Set(matchingProducts.map(p => p.vendorId)));
-      const productVendors = productVendorIds.length > 0 
-        ? await db.select().from(vendors).where(sql`${vendors.id} IN (${sql.raw(productVendorIds.join(','))})`)
-        : [];
-      
-      const vendorMap = new Map(productVendors.map(v => [v.id, v]));
-      productsWithVendor = matchingProducts
-        .filter(p => vendorMap.has(p.vendorId))
-        .map(p => ({
-          ...p,
-          vendor: vendorMap.get(p.vendorId)!
-        }));
+      if (matchingProducts.length > 0) {
+        // Get vendors for products in single query
+        const productVendorIds = Array.from(new Set(matchingProducts.map(p => p.vendorId)));
+        const productVendors = await db.select().from(vendors).where(
+          sql`${vendors.id} IN (${sql.raw(productVendorIds.join(','))})`
+        );
+        
+        const vendorMap = new Map(productVendors.map(v => [v.id, v]));
+        productsWithVendor = matchingProducts
+          .filter(p => vendorMap.has(p.vendorId))
+          .map(p => ({
+            ...p,
+            vendor: vendorMap.get(p.vendorId)!
+          }));
+      }
     }
 
     return {
-      vendors: mergedVendors,
+      vendors: matchingVendors,
       products: productsWithVendor
     };
   }
