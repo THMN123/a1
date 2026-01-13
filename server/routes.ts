@@ -224,6 +224,40 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Update vendor fulfillment options (pickup/delivery)
+  const fulfillmentUpdateSchema = z.object({
+    offersPickup: z.boolean().optional(),
+    offersDelivery: z.boolean().optional(),
+  });
+
+  app.patch('/api/vendors/:id/fulfillment', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    const user = req.user as any;
+    const vendorId = Number(req.params.id);
+    const vendor = await storage.getVendor(vendorId);
+    
+    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if (vendor.ownerId !== user.claims.sub) return res.status(403).json({ message: "Forbidden" });
+
+    try {
+      const parsed = fulfillmentUpdateSchema.parse(req.body);
+      
+      // Ensure at least one option is enabled
+      const newPickup = parsed.offersPickup !== undefined ? parsed.offersPickup : vendor.offersPickup;
+      const newDelivery = parsed.offersDelivery !== undefined ? parsed.offersDelivery : vendor.offersDelivery;
+      
+      if (!newPickup && !newDelivery) {
+        return res.status(400).json({ message: "At least one fulfillment option must be enabled" });
+      }
+
+      const updated = await storage.updateVendor(vendorId, { offersPickup: newPickup, offersDelivery: newDelivery });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      throw err;
+    }
+  });
+
   // -- Fuzzy Search --
   app.get('/api/search', async (req, res) => {
     const query = (req.query.q as string) || '';
@@ -306,12 +340,25 @@ export async function registerRoutes(
       const vendor = await storage.getVendor(input.vendorId);
       if (!vendor) throw new Error("Vendor not found");
       
-      const fulfillmentMethod = input.fulfillmentMethod || "pickup";
+      // Default to vendor's first available option
+      let fulfillmentMethod = input.fulfillmentMethod;
+      if (!fulfillmentMethod) {
+        fulfillmentMethod = vendor.offersPickup ? "pickup" : "delivery";
+      }
+      
       if (fulfillmentMethod === "delivery" && !vendor.offersDelivery) {
         return res.status(400).json({ message: "This vendor does not offer delivery" });
       }
       if (fulfillmentMethod === "pickup" && !vendor.offersPickup) {
         return res.status(400).json({ message: "This vendor does not offer pickup" });
+      }
+      
+      // Require delivery address for delivery orders
+      if (fulfillmentMethod === "delivery") {
+        const address = input.deliveryAddress?.trim();
+        if (!address) {
+          return res.status(400).json({ message: "Delivery address is required for delivery orders" });
+        }
       }
 
       const orderData = {
@@ -319,7 +366,7 @@ export async function registerRoutes(
         vendorId: input.vendorId,
         paymentMethod: input.paymentMethod,
         fulfillmentMethod,
-        deliveryAddress: fulfillmentMethod === "delivery" ? input.deliveryAddress : null,
+        deliveryAddress: fulfillmentMethod === "delivery" ? input.deliveryAddress?.trim() : null,
         totalAmount: total.toFixed(2),
         status: "pending"
       };

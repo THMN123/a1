@@ -123,14 +123,22 @@ export default function VendorDetails() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const openCheckout = () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !vendor) return;
     // Set default fulfillment method based on what vendor offers
-    if (vendor?.offersPickup) {
+    if (vendor.offersPickup) {
       setFulfillmentMethod("pickup");
-    } else if (vendor?.offersDelivery) {
+    } else if (vendor.offersDelivery) {
       setFulfillmentMethod("delivery");
     }
+    setDeliveryAddress("");
     setCheckoutOpen(true);
+  };
+
+  const canPlaceOrder = () => {
+    if (fulfillmentMethod === "delivery" && !deliveryAddress.trim()) {
+      return false;
+    }
+    return true;
   };
 
   const handleCheckout = () => {
@@ -522,7 +530,7 @@ export default function VendorDetails() {
             {/* Place Order Button */}
             <Button
               onClick={handleCheckout}
-              disabled={creatingOrder}
+              disabled={creatingOrder || !canPlaceOrder()}
               className="w-full h-12"
               data-testid="button-place-order"
             >
@@ -531,6 +539,9 @@ export default function VendorDetails() {
               ) : null}
               Place Order - LSL {cartTotal.toFixed(2)}
             </Button>
+            {fulfillmentMethod === "delivery" && !deliveryAddress.trim() && (
+              <p className="text-xs text-destructive text-center">Please enter a delivery address</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

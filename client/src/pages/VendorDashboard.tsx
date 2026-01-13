@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Store, Package, DollarSign, Clock, CheckCircle, XCircle, Loader2, Bell, X } from "lucide-react";
+import { ArrowLeft, Store, Package, DollarSign, Clock, CheckCircle, XCircle, Loader2, Bell, X, MapPin, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -46,10 +46,28 @@ function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (s
               {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}
             </p>
           </div>
-          <Badge className={statusColors[order.status]}>
-            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={statusColors[order.status]}>
+              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            </Badge>
+            {order.fulfillmentMethod && (
+              <Badge variant="outline" className="text-xs">
+                {order.fulfillmentMethod === "pickup" ? (
+                  <><Package className="w-3 h-3 mr-1" />Pickup</>
+                ) : (
+                  <><MapPin className="w-3 h-3 mr-1" />Delivery</>
+                )}
+              </Badge>
+            )}
+          </div>
         </div>
+
+        {order.fulfillmentMethod === "delivery" && order.deliveryAddress && (
+          <div className="mb-3 p-2 bg-blue-500/5 rounded-lg text-sm">
+            <span className="text-muted-foreground">Deliver to: </span>
+            {order.deliveryAddress}
+          </div>
+        )}
         
         <div className="flex items-center justify-between pt-3 border-t border-border/50">
           <span className="font-bold text-primary">LSL {order.totalAmount}</span>
@@ -130,6 +148,21 @@ export default function VendorDashboard() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update order", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const updateFulfillmentMutation = useMutation({
+    mutationFn: async (data: { offersPickup?: boolean; offersDelivery?: boolean }) => {
+      if (!myVendor) return;
+      const res = await apiRequest("PATCH", `/api/vendors/${myVendor.id}/fulfillment`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      toast({ title: "Settings updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update settings", description: error.message, variant: "destructive" });
     }
   });
 
@@ -259,15 +292,18 @@ export default function VendorDashboard() {
         </div>
 
         <Tabs defaultValue="pending" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="pending" className="flex-1" data-testid="tab-pending">
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="pending" data-testid="tab-pending">
               Pending ({pendingOrders.length})
             </TabsTrigger>
-            <TabsTrigger value="active" className="flex-1" data-testid="tab-active">
+            <TabsTrigger value="active" data-testid="tab-active">
               Active ({activeOrders.length})
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex-1" data-testid="tab-history">
+            <TabsTrigger value="history" data-testid="tab-history">
               History
+            </TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <Settings className="w-4 h-4" />
             </TabsTrigger>
           </TabsList>
           
@@ -311,6 +347,65 @@ export default function VendorDashboard() {
                 />
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Fulfillment Options</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-primary/10">
+                      <Package className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Pickup</p>
+                      <p className="text-sm text-muted-foreground">Customers collect orders at your location</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={myVendor.offersPickup}
+                    onCheckedChange={(checked) => {
+                      if (!checked && !myVendor.offersDelivery) {
+                        toast({ title: "At least one option required", variant: "destructive" });
+                        return;
+                      }
+                      updateFulfillmentMutation.mutate({ offersPickup: checked });
+                    }}
+                    data-testid="switch-offers-pickup"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-500/10">
+                      <MapPin className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Delivery</p>
+                      <p className="text-sm text-muted-foreground">Deliver orders to customers</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={myVendor.offersDelivery}
+                    onCheckedChange={(checked) => {
+                      if (!checked && !myVendor.offersPickup) {
+                        toast({ title: "At least one option required", variant: "destructive" });
+                        return;
+                      }
+                      updateFulfillmentMutation.mutate({ offersDelivery: checked });
+                    }}
+                    data-testid="switch-offers-delivery"
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground pt-2">
+                  Customers will see these options during checkout
+                </p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
