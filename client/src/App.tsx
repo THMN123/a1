@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import { ProfileModeProvider } from "@/contexts/ProfileModeContext";
 
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -118,10 +119,12 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ProfileModeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ProfileModeProvider>
     </QueryClientProvider>
   );
 }
