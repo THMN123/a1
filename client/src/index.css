@@ -38,6 +38,54 @@
 
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'Outfit', sans-serif;
+
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 0 0% 10%;
+  --sidebar-primary: 28 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 28 100% 97%;
+  --sidebar-accent-foreground: 28 100% 50%;
+  --sidebar-border: 0 0% 92%;
+  --sidebar-ring: 28 100% 50%;
+}
+
+.dark {
+  --primary: 28 100% 55%; /* Slightly brighter orange for dark mode */
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 10%;
+
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 95%;
+
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 95%;
+
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 60%;
+
+  --accent: 28 50% 15%; /* Dark orange tint for backgrounds */
+  --accent-foreground: 28 100% 60%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 28 100% 55%;
+
+  --sidebar-background: 0 0% 8%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 28 100% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 28 50% 15%;
+  --sidebar-accent-foreground: 28 100% 60%;
+  --sidebar-border: 0 0% 18%;
+  --sidebar-ring: 28 100% 55%;
 }
 
 @layer base {
