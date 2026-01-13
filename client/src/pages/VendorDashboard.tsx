@@ -227,11 +227,11 @@ export default function VendorDashboard() {
   });
 
   const { data: serviceRequests = [] } = useQuery<ServiceRequest[]>({
-    queryKey: ["/api/vendors", myVendor?.id, "service-requests"],
+    queryKey: ["/api/service-requests/vendor", myVendor?.id],
     enabled: !!myVendor && myVendor.vendorType === "service",
     queryFn: async () => {
       if (!myVendor) return [];
-      const res = await fetch(`/api/vendors/${myVendor.id}/service-requests`);
+      const res = await fetch(`/api/service-requests/vendor/${myVendor.id}`);
       return res.json();
     }
   });
@@ -286,7 +286,7 @@ export default function VendorDashboard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", myVendor?.id, "service-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/service-requests/vendor", myVendor?.id] });
       toast({ title: "Request updated" });
     },
     onError: (error: Error) => {
@@ -424,23 +424,22 @@ export default function VendorDashboard() {
         </div>
 
         <Tabs defaultValue="pending" className="w-full">
-          <TabsList className={`w-full grid ${isServiceVendor ? 'grid-cols-5' : 'grid-cols-4'}`}>
-            <TabsTrigger value="pending" data-testid="tab-pending">
-              Pending ({pendingOrders.length})
+          <TabsList className="w-full flex overflow-x-auto gap-1">
+            <TabsTrigger value="pending" className="flex-1 min-w-fit" data-testid="tab-pending">
+              Pending {pendingOrders.length > 0 && `(${pendingOrders.length})`}
             </TabsTrigger>
-            <TabsTrigger value="active" data-testid="tab-active">
-              Active ({activeOrders.length})
+            <TabsTrigger value="active" className="flex-1 min-w-fit" data-testid="tab-active">
+              Active {activeOrders.length > 0 && `(${activeOrders.length})`}
             </TabsTrigger>
             {isServiceVendor && (
-              <TabsTrigger value="requests" data-testid="tab-requests">
-                <Briefcase className="w-4 h-4 mr-1" />
-                {pendingRequests.length > 0 && <span className="ml-1">({pendingRequests.length})</span>}
+              <TabsTrigger value="requests" className="flex-1 min-w-fit" data-testid="tab-requests">
+                Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
               </TabsTrigger>
             )}
-            <TabsTrigger value="history" data-testid="tab-history">
+            <TabsTrigger value="history" className="flex-1 min-w-fit" data-testid="tab-history">
               History
             </TabsTrigger>
-            <TabsTrigger value="settings" data-testid="tab-settings">
+            <TabsTrigger value="settings" className="flex-1 min-w-fit px-3" data-testid="tab-settings">
               <Settings className="w-4 h-4" />
             </TabsTrigger>
           </TabsList>
