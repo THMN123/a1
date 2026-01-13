@@ -289,7 +289,7 @@ function PromotionsTab({ promotions }: { promotions: Promotion[] }) {
                   <p className="text-sm font-medium text-primary">
                     {promo.discountType === 'percentage' 
                       ? `${promo.discountValue}% off` 
-                      : `$${promo.discountValue} off`}
+                      : `LSL ${promo.discountValue} off`}
                   </p>
                 </div>
                 <Badge variant={promo.isActive ? "default" : "secondary"}>

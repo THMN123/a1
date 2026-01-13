@@ -18,7 +18,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
       <div className="flex-1">
         <h4 className="font-bold text-base mb-1">{product.name}</h4>
         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{product.description}</p>
-        <p className="font-bold text-primary">${Number(product.price).toFixed(2)}</p>
+        <p className="font-bold text-primary">LSL {Number(product.price).toFixed(2)}</p>
       </div>
       
       <div className="flex flex-col items-center gap-3">

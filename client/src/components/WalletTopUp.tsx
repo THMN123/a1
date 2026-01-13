@@ -67,7 +67,7 @@ export function WalletTopUp() {
                 )}
                 data-testid={`button-amount-${amount}`}
               >
-                <span className="text-2xl font-bold">${amount}</span>
+                <span className="text-2xl font-bold">LSL {amount}</span>
               </button>
             ))}
           </div>
@@ -83,7 +83,7 @@ export function WalletTopUp() {
             ) : (
               <CreditCard className="w-4 h-4 mr-2" />
             )}
-            Pay ${selectedAmount} with Card
+            Pay LSL {selectedAmount} with Card
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">

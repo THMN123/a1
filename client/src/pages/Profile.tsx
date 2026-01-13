@@ -213,7 +213,7 @@ export default function Profile() {
         <div className="grid grid-cols-3 gap-3 mb-2">
           <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col items-center justify-center gap-1">
             <Wallet className="w-5 h-5 text-primary mb-1" />
-            <span className="text-lg font-bold text-primary">${profile?.walletBalance || "0.00"}</span>
+            <span className="text-lg font-bold text-primary">LSL {profile?.walletBalance || "0.00"}</span>
             <span className="text-xs text-muted-foreground">Wallet</span>
           </div>
           <div className="p-3 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col items-center justify-center gap-1">

@@ -52,7 +52,7 @@ function OrderCard({ order, onUpdateStatus }: { order: Order; onUpdateStatus: (s
         </div>
         
         <div className="flex items-center justify-between pt-3 border-t border-border/50">
-          <span className="font-bold text-primary">${order.totalAmount}</span>
+          <span className="font-bold text-primary">LSL {order.totalAmount}</span>
           <div className="flex gap-2">
             {order.status === "pending" && (
               <Button 
@@ -252,7 +252,7 @@ export default function VendorDashboard() {
           <Card>
             <CardContent className="p-4 text-center">
               <DollarSign className="w-6 h-6 mx-auto text-green-500 mb-2" />
-              <p className="text-2xl font-bold">${todayRevenue.toFixed(0)}</p>
+              <p className="text-2xl font-bold">LSL {todayRevenue.toFixed(0)}</p>
               <p className="text-xs text-muted-foreground">Today</p>
             </CardContent>
           </Card>

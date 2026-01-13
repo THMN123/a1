@@ -86,7 +86,7 @@ export default function Orders() {
                   Total Amount
                 </div>
                 <div className="text-xl font-bold text-primary">
-                  ${Number(order.totalAmount).toFixed(2)}
+                  LSL {Number(order.totalAmount).toFixed(2)}
                 </div>
               </div>
             </div>

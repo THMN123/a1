@@ -232,7 +232,7 @@ export function GlobalSearch() {
                             <p className="font-medium text-sm truncate">{product.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{product.description}</p>
                           </div>
-                          <span className="text-primary font-bold text-sm">${product.price}</span>
+                          <span className="text-primary font-bold text-sm">LSL {product.price}</span>
                         </button>
                       ))}
                     </div>

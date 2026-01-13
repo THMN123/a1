@@ -34,7 +34,7 @@ function ProductCard({ product, vendorId }: { product: Product; vendorId?: numbe
         </div>
         <div className="p-3">
           <h4 className="font-semibold text-sm line-clamp-1">{product.name}</h4>
-          <p className="text-primary font-bold text-sm">${product.price}</p>
+          <p className="text-primary font-bold text-sm">LSL {product.price}</p>
         </div>
       </motion.div>
     </Link>

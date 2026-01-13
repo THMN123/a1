@@ -153,7 +153,7 @@ export default function VendorDetails() {
               <div className="flex items-center gap-2">
                 <span>View Cart</span>
                 <span className="opacity-60">|</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>LSL {cartTotal.toFixed(2)}</span>
               </div>
             </Button>
           </motion.div>

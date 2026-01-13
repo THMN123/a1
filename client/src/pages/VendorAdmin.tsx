@@ -94,7 +94,7 @@ function OverviewTab({ vendor, analytics }: { vendor: Vendor; analytics: any }) 
               <DollarSign className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">${analytics?.totalRevenue || "0.00"}</p>
+              <p className="text-2xl font-bold">LSL {analytics?.totalRevenue || "0.00"}</p>
               <p className="text-sm text-muted-foreground">Revenue</p>
             </div>
           </div>
@@ -105,7 +105,7 @@ function OverviewTab({ vendor, analytics }: { vendor: Vendor; analytics: any }) 
               <TrendingUp className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">${analytics?.avgOrderValue || "0.00"}</p>
+              <p className="text-2xl font-bold">LSL {analytics?.avgOrderValue || "0.00"}</p>
               <p className="text-sm text-muted-foreground">Avg Order</p>
             </div>
           </div>
@@ -149,9 +149,9 @@ function OverviewTab({ vendor, analytics }: { vendor: Vendor; analytics: any }) 
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weeklyData}>
               <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `$${val}`} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `LSL ${val}`} />
               <Tooltip 
-                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
+                formatter={(value: number) => [`LSL ${value.toFixed(2)}`, 'Revenue']}
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',

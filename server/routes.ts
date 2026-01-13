@@ -294,7 +294,7 @@ export async function registerRoutes(
         await storage.createNotification({
           userId: vendor.ownerId,
           title: "New Order!",
-          message: `You have a new order #${order.id} worth $${total.toFixed(2)}`,
+          message: `You have a new order #${order.id} worth LSL ${total.toFixed(2)}`,
           type: "order",
           data: { orderId: order.id, total: total.toFixed(2) }
         });
@@ -302,7 +302,7 @@ export async function registerRoutes(
         // Send push notification to vendor
         sendPushNotification(vendor.ownerId, {
           title: "New Order!",
-          body: `You have a new order #${order.id} worth $${total.toFixed(2)}`,
+          body: `You have a new order #${order.id} worth LSL ${total.toFixed(2)}`,
           url: "/vendor-dashboard",
           tag: `order-${order.id}`,
           data: { orderId: order.id }
@@ -527,7 +527,7 @@ export async function registerRoutes(
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Wallet Top-Up: $${amount}`,
+              name: `Wallet Top-Up: LSL ${amount}`,
               description: 'Add funds to your A1 Services wallet',
             },
             unit_amount: amount * 100, // Convert to cents
