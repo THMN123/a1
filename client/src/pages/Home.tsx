@@ -74,11 +74,18 @@ export default function Home() {
       {/* Header */}
       <header className="px-5 pt-14 pb-4 bg-white sticky top-0 z-40 border-b border-border/40 backdrop-blur-xl bg-white/80">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-muted-foreground text-sm font-medium">Welcome back,</p>
-            <h1 className="text-2xl font-display font-bold text-foreground">
-              {user?.firstName || "Guest"}
-            </h1>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/images/logo1.png" 
+              alt="A1 Services" 
+              className="w-10 h-10 rounded-lg object-contain"
+            />
+            <div>
+              <p className="text-muted-foreground text-sm font-medium">Welcome back,</p>
+              <h1 className="text-xl font-display font-bold text-foreground">
+                {user?.firstName || "Guest"}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ProfileSwitcher />
