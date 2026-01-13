@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type Profile } from "@shared/routes";
+import { api } from "@shared/routes";
+import type { Profile } from "@shared/schema";
 
 export function useProfile() {
   return useQuery({

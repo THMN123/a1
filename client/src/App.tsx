@@ -1,15 +1,17 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profiles";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { ProfileModeProvider } from "@/contexts/ProfileModeContext";
 
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
+import Onboarding from "@/pages/Onboarding";
 import VendorDetails from "@/pages/VendorDetails";
 import Orders from "@/pages/Orders";
 import Shops from "@/pages/Shops";
@@ -24,10 +26,20 @@ import BecomeVendor from "@/pages/BecomeVendor";
 import SuperAdmin from "@/pages/SuperAdmin";
 import NotFound from "@/pages/not-found";
 
-function ProtectedRoute({ component: Component, ...rest }: any) {
+function ProtectedRoute({ component: Component, skipOnboarding = false, ...rest }: any) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { data: profile, isLoading: profileLoading, isFetching } = useProfile();
+  const [, navigate] = useLocation();
 
-  if (isLoading) {
+  const needsOnboarding = !skipOnboarding && !profileLoading && !isFetching && (!profile || !profile.displayName);
+
+  useEffect(() => {
+    if (isAuthenticated && needsOnboarding) {
+      navigate("/onboarding");
+    }
+  }, [isAuthenticated, needsOnboarding, navigate]);
+
+  if (isLoading || profileLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -37,6 +49,14 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
 
   if (!isAuthenticated) {
     return <Login />;
+  }
+
+  if (needsOnboarding) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return <Component {...rest} />;
@@ -101,6 +121,10 @@ function Router() {
       </Route>
 
       <Route path="/login" component={Login} />
+
+      <Route path="/onboarding">
+        {() => <ProtectedRoute component={Onboarding} skipOnboarding />}
+      </Route>
       
       <Route component={NotFound} />
     </Switch>

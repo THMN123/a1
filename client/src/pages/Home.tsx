@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profiles";
 import { useVendors } from "@/hooks/use-vendors";
 import { useQuery } from "@tanstack/react-query";
 import { VendorCard } from "@/components/VendorCard";
@@ -43,6 +44,7 @@ function ProductCard({ product, vendorId }: { product: Product; vendorId?: numbe
 
 export default function Home() {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   
   const { data: feedData, isLoading: feedLoading } = useQuery<HomeFeedData>({
@@ -83,7 +85,7 @@ export default function Home() {
             <div>
               <p className="text-muted-foreground text-sm font-medium">Welcome back,</p>
               <h1 className="text-xl font-display font-bold text-foreground">
-                {user?.firstName || "Guest"}
+                {profile?.displayName || user?.firstName || "Guest"}
               </h1>
             </div>
           </div>
