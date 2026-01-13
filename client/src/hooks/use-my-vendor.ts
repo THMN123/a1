@@ -5,16 +5,16 @@ import type { Vendor } from "@shared/schema";
 export function useMyVendor() {
   const { user } = useAuth();
   
-  const { data: vendors = [] } = useQuery<Vendor[]>({
+  const { data: vendors, isLoading, isFetching } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
     enabled: !!user,
   });
 
-  const myVendor = vendors.find(v => v.ownerId === user?.id);
+  const myVendor = (vendors || []).find(v => v.ownerId === user?.id);
   
   return {
     vendor: myVendor,
     hasVendor: !!myVendor,
-    isLoading: !vendors,
+    isLoading: isLoading || isFetching,
   };
 }

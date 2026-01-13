@@ -180,7 +180,7 @@ export class DatabaseStorage implements IStorage {
 
   // Products
   async getAllProducts(): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.isAvailable, true));
+    return await db.select().from(products);
   }
 
   async getProductsByVendorId(vendorId: number): Promise<Product[]> {
