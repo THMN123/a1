@@ -9,59 +9,84 @@ const __dirname = path.dirname(__filename);
 export function serveStatic(app: Express) {
   console.log(`[Static] Current __dirname: ${__dirname}`);
   console.log(`[Static] Current process.cwd(): ${process.cwd()}`);
+  console.log(`[Static] Node env: ${process.env.NODE_ENV}`);
+  console.log(`[Static] Vercel env: ${process.env.VERCEL ? 'yes' : 'no'}`);
   
-  // Try multiple possible locations for static files
+  // On Vercel, __dirname is /var/task/dist and we need to go up to find public
+  // In dev, __dirname is /server and we need to go up to find dist/public
+  // After build, dist is the root directory on Vercel
+  
   const possiblePaths = [
-    // Standard build output
-    path.resolve(__dirname, "..", "public"),
-    // Vercel build (dist is root)
-    path.resolve(__dirname, "public"),
-    // Development
-    path.resolve(process.cwd(), "dist", "public"),
-    path.resolve(process.cwd(), "public"),
+    // Standard build output after local build
+    path.join(__dirname, "..", "public"),
+    // When __dirname is dist (Vercel root)
+    path.join(__dirname, "public"),
+    // Relative to cwd
+    path.join(process.cwd(), "public"),
+    path.join(process.cwd(), "dist", "public"),
   ];
   
-  console.log(`[Static] Checking for static files at:`, possiblePaths);
+  console.log(`[Static] Checking paths:`, possiblePaths);
   
   let distPath = "";
   for (const p of possiblePaths) {
-    const exists = fs.existsSync(p);
-    console.log(`[Static] ${p} - exists: ${exists}`);
+    const resolvedPath = path.resolve(p);
+    const exists = fs.existsSync(resolvedPath);
+    console.log(`[Static] ${resolvedPath} - exists: ${exists}`);
+    
     if (exists) {
-      distPath = p;
-      console.log(`[Static] ✓ Found static files at: ${distPath}`);
-      break;
+      // Check if index.html exists in this directory
+      const indexExists = fs.existsSync(path.join(resolvedPath, "index.html"));
+      console.log(`[Static]   └─ index.html exists: ${indexExists}`);
+      
+      if (indexExists) {
+        distPath = resolvedPath;
+        console.log(`[Static] ✓ Using: ${distPath}`);
+        break;
+      }
     }
   }
   
   if (!distPath) {
-    console.warn(
-      `[Static] ✗ Warning: Static directory not found. Tried: ${possiblePaths.join(", ")}. ` +
-      `API-only mode. Make sure to build the client first with: npm run build`,
+    console.error(
+      `[Static] ✗ No valid static directory found with index.html`,
     );
-    // Don't throw - just log a warning. API can still work.
+    // Return without setting up static, API will still work
     return;
   }
 
+  // Serve static files
   app.use(express.static(distPath, { 
     index: "index.html",
+    maxAge: "1h",
     setHeaders: (res, filepath) => {
+      res.setHeader("Cache-Control", "public, max-age=3600");
       if (filepath.endsWith(".html")) {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
+      } else if (filepath.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      } else if (filepath.endsWith(".css")) {
+        res.setHeader("Content-Type", "text/css; charset=utf-8");
       }
     }
   }));
 
-  // fall through to index.html if the file doesn't exist (SPA routing)
-  app.use("*", (_req, res) => {
-    const indexPath = path.resolve(distPath, "index.html");
-    const indexExists = fs.existsSync(indexPath);
-    console.log(`[Static] Fallback route hit - checking index.html at: ${indexPath} - exists: ${indexExists}`);
-    if (indexExists) {
+  // SPA catch-all - serve index.html for any route that doesn't match a file
+  app.use("*", (req, res) => {
+    const indexPath = path.join(distPath, "index.html");
+    console.log(`[Static] SPA fallback for ${req.path} - serving ${indexPath}`);
+    
+    if (fs.existsSync(indexPath)) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache");
       res.sendFile(indexPath);
     } else {
-      res.status(404).json({ message: "Client not built. Static files not found at: " + distPath });
+      console.error(`[Static] index.html not found at ${indexPath}`);
+      res.status(404).json({ 
+        error: "index.html not found", 
+        looked_in: indexPath,
+        dist_path: distPath
+      });
     }
   });
 }

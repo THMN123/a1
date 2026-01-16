@@ -7,6 +7,9 @@ import { WebhookHandlers } from './webhookHandlers';
 const app = express();
 const httpServer = createServer(app);
 
+// Export app for Vercel at module level
+export default app;
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

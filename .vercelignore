@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+node_modules
+npm-debug.log
+*.md
+script/
+attached_assets/
+images/
+backup.sql
