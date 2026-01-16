@@ -7,10 +7,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export function serveStatic(app: Express) {
+  console.log(`\n[Static] ==================== STATIC FILE SETUP ====================`);
   console.log(`[Static] Current __dirname: ${__dirname}`);
   console.log(`[Static] Current process.cwd(): ${process.cwd()}`);
   console.log(`[Static] Node env: ${process.env.NODE_ENV}`);
-  console.log(`[Static] Vercel env: ${process.env.VERCEL ? 'yes' : 'no'}`);
+  console.log(`[Static] Vercel: ${process.env.VERCEL ? 'yes' : 'no'}`);
+  console.log(`[Static] ================================================================\n`);
   
   // On Vercel, __dirname is /var/task/dist and we need to go up to find public
   // In dev, __dirname is /server and we need to go up to find dist/public
@@ -24,6 +26,9 @@ export function serveStatic(app: Express) {
     // Relative to cwd
     path.join(process.cwd(), "public"),
     path.join(process.cwd(), "dist", "public"),
+    // Vercel specific
+    "/var/task/public",
+    "/var/task/dist/public",
   ];
   
   console.log(`[Static] Checking paths:`, possiblePaths);
@@ -41,7 +46,7 @@ export function serveStatic(app: Express) {
       
       if (indexExists) {
         distPath = resolvedPath;
-        console.log(`[Static] ✓ Using: ${distPath}`);
+        console.log(`[Static] ✓✓✓ USING: ${distPath}\n`);
         break;
       }
     }
@@ -49,13 +54,14 @@ export function serveStatic(app: Express) {
   
   if (!distPath) {
     console.error(
-      `[Static] ✗ No valid static directory found with index.html`,
+      `[Static] ✗✗✗ CRITICAL: No valid static directory found with index.html`,
     );
     // Return without setting up static, API will still work
     return;
   }
 
   // Serve static files
+  console.log(`[Static] Setting up express.static middleware for: ${distPath}`);
   app.use(express.static(distPath, { 
     index: "index.html",
     maxAge: "1h",
@@ -74,14 +80,14 @@ export function serveStatic(app: Express) {
   // SPA catch-all - serve index.html for any route that doesn't match a file
   app.use("*", (req, res) => {
     const indexPath = path.join(distPath, "index.html");
-    console.log(`[Static] SPA fallback for ${req.path} - serving ${indexPath}`);
     
     if (fs.existsSync(indexPath)) {
+      console.log(`[Static] SPA fallback for ${req.path} → serving index.html`);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache");
       res.sendFile(indexPath);
     } else {
-      console.error(`[Static] index.html not found at ${indexPath}`);
+      console.error(`[Static] CRITICAL: index.html not found at ${indexPath}`);
       res.status(404).json({ 
         error: "index.html not found", 
         looked_in: indexPath,

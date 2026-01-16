@@ -58,12 +58,8 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Debug endpoint - shows env config (only in non-production for security)
+// Debug endpoints - comprehensive debugging
 app.get("/debug/env", (_req, res) => {
-  if (process.env.NODE_ENV === "production" && !process.env.DEBUG_ENV) {
-    return res.status(403).json({ error: "Debug endpoint disabled in production" });
-  }
-  
   res.status(200).json({
     NODE_ENV: process.env.NODE_ENV,
     VERCEL: process.env.VERCEL,
@@ -71,6 +67,78 @@ app.get("/debug/env", (_req, res) => {
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? "SET" : "MISSING",
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "SET" : "MISSING",
     DATABASE_URL: process.env.DATABASE_URL ? "SET" : "MISSING",
+  });
+});
+
+app.get("/debug/files", async (_req, res) => {
+  const fs = await import("fs");
+  const path = await import("path");
+  const { fileURLToPath } = await import("url");
+  
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  
+  const possibleDirs = [
+    path.resolve(__dirname, "..", "public"),
+    path.resolve(__dirname, "public"),
+    path.resolve(process.cwd(), "dist", "public"),
+    path.resolve(process.cwd(), "public"),
+    process.cwd(),
+    "/var/task",
+    "/var/task/public",
+    "/var/task/dist/public",
+  ];
+  
+  const results: Record<string, any> = {
+    __dirname,
+    cwd: process.cwd(),
+    directories: {}
+  };
+  
+  for (const dir of possibleDirs) {
+    try {
+      const exists = fs.existsSync(dir);
+      results.directories[dir] = {
+        exists,
+        files: exists ? fs.readdirSync(dir).slice(0, 10) : null
+      };
+    } catch (e) {
+      results.directories[dir] = { error: String(e) };
+    }
+  }
+  
+  res.status(200).json(results);
+});
+
+app.get("/debug/tree", async (_req, res) => {
+  const fs = await import("fs");
+  const path = await import("path");
+  
+  function getTree(dir: string, prefix = "", depth = 0): string[] {
+    if (depth > 3) return [];
+    try {
+      const files = fs.readdirSync(dir);
+      return files.slice(0, 20).flatMap((f) => {
+        const fullPath = path.join(dir, f);
+        try {
+          const stat = fs.statSync(fullPath);
+          const line = prefix + f + (stat.isDirectory() ? "/" : "");
+          if (stat.isDirectory() && depth < 2) {
+            return [line, ...getTree(fullPath, prefix + "  ", depth + 1)];
+          }
+          return [line];
+        } catch {
+          return [prefix + f + " (error)"];
+        }
+      });
+    } catch (e) {
+      return [prefix + `Error reading ${dir}: ${e}`];
+    }
+  }
+  
+  res.status(200).json({
+    cwd_tree: getTree(process.cwd()),
+    var_task_tree: getTree("/var/task"),
   });
 });
 

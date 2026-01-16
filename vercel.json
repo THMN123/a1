@@ -4,5 +4,16 @@
   "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "functions": {
+    "index.cjs": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.cjs"
+    }
+  ]
 }
