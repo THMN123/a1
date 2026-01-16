@@ -114,7 +114,12 @@ app.use((req, res, next) => {
     // doesn't interfere with the other routes
     if (process.env.NODE_ENV === "production") {
       console.log('[Server] Setting up static file serving');
-      serveStatic(app);
+      try {
+        serveStatic(app);
+        console.log('[Server] Static file serving configured');
+      } catch (err) {
+        console.error('[Server] Error setting up static files:', err);
+      }
     } else {
       console.log('[Server] Setting up Vite dev server');
       const { setupVite } = await import("./vite");

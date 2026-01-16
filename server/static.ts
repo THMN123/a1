@@ -7,6 +7,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export function serveStatic(app: Express) {
+  console.log(`[Static] Current __dirname: ${__dirname}`);
+  console.log(`[Static] Current process.cwd(): ${process.cwd()}`);
+  
   // Try multiple possible locations for static files
   const possiblePaths = [
     // Standard build output
@@ -18,18 +21,22 @@ export function serveStatic(app: Express) {
     path.resolve(process.cwd(), "public"),
   ];
   
+  console.log(`[Static] Checking for static files at:`, possiblePaths);
+  
   let distPath = "";
   for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
+    const exists = fs.existsSync(p);
+    console.log(`[Static] ${p} - exists: ${exists}`);
+    if (exists) {
       distPath = p;
-      console.log(`[Static] Found static files at: ${distPath}`);
+      console.log(`[Static] ✓ Found static files at: ${distPath}`);
       break;
     }
   }
   
   if (!distPath) {
     console.warn(
-      `[Static] Warning: Static directory not found. Tried: ${possiblePaths.join(", ")}. ` +
+      `[Static] ✗ Warning: Static directory not found. Tried: ${possiblePaths.join(", ")}. ` +
       `API-only mode. Make sure to build the client first with: npm run build`,
     );
     // Don't throw - just log a warning. API can still work.
@@ -48,7 +55,9 @@ export function serveStatic(app: Express) {
   // fall through to index.html if the file doesn't exist (SPA routing)
   app.use("*", (_req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
-    if (fs.existsSync(indexPath)) {
+    const indexExists = fs.existsSync(indexPath);
+    console.log(`[Static] Fallback route hit - checking index.html at: ${indexPath} - exists: ${indexExists}`);
+    if (indexExists) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.sendFile(indexPath);
     } else {
