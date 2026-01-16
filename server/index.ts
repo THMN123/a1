@@ -58,6 +58,22 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Debug endpoint - shows env config (only in non-production for security)
+app.get("/debug/env", (_req, res) => {
+  if (process.env.NODE_ENV === "production" && !process.env.DEBUG_ENV) {
+    return res.status(403).json({ error: "Debug endpoint disabled in production" });
+  }
+  
+  res.status(200).json({
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL,
+    SUPABASE_URL: process.env.SUPABASE_URL ? "SET" : "MISSING",
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? "SET" : "MISSING",
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "SET" : "MISSING",
+    DATABASE_URL: process.env.DATABASE_URL ? "SET" : "MISSING",
+  });
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
