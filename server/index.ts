@@ -50,6 +50,11 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Health check endpoint
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -89,22 +94,29 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    console.log('[Server] Starting initialization...');
+    console.log('[Server] NODE_ENV:', process.env.NODE_ENV);
+    console.log('[Server] VERCEL:', process.env.VERCEL);
+    
     await registerRoutes(httpServer, app);
+    console.log('[Server] Routes registered');
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
 
       res.status(status).json({ message });
-      console.error('Express error:', err);
+      console.error('[Server] Express error:', err);
     });
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
     if (process.env.NODE_ENV === "production") {
+      console.log('[Server] Setting up static file serving');
       serveStatic(app);
     } else {
+      console.log('[Server] Setting up Vite dev server');
       const { setupVite } = await import("./vite");
       await setupVite(httpServer, app);
     }
@@ -122,9 +134,11 @@ app.use((req, res, next) => {
           log(`serving on port ${port}`);
         },
       );
+    } else {
+      console.log('[Server] Running in Vercel serverless mode');
     }
   } catch (error) {
-    console.error('Fatal server startup error:', error);
+    console.error('[Server] Fatal server startup error:', error);
     process.exit(1);
   }
 })();

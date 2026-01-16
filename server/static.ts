@@ -3,16 +3,33 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function serveStatic(app: Express) {
-  // In production, static files are in dist/public (relative to root)
-  // In the built structure, this server file is at dist/index.cjs, so we go up one level
-  const distPath = path.resolve(__dirname, "..", "public");
+  // Try multiple possible locations for static files
+  const possiblePaths = [
+    // Standard build output
+    path.resolve(__dirname, "..", "public"),
+    // Vercel build (dist is root)
+    path.resolve(__dirname, "public"),
+    // Development
+    path.resolve(process.cwd(), "dist", "public"),
+    path.resolve(process.cwd(), "public"),
+  ];
   
-  if (!fs.existsSync(distPath)) {
+  let distPath = "";
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      distPath = p;
+      console.log(`[Static] Found static files at: ${distPath}`);
+      break;
+    }
+  }
+  
+  if (!distPath) {
     console.warn(
-      `Warning: Static directory not found at ${distPath}. ` +
+      `[Static] Warning: Static directory not found. Tried: ${possiblePaths.join(", ")}. ` +
       `API-only mode. Make sure to build the client first with: npm run build`,
     );
     // Don't throw - just log a warning. API can still work.
@@ -21,8 +38,8 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath, { 
     index: "index.html",
-    setHeaders: (res, path) => {
-      if (path.endsWith(".html")) {
+    setHeaders: (res, filepath) => {
+      if (filepath.endsWith(".html")) {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
       }
     }
@@ -35,8 +52,9 @@ export function serveStatic(app: Express) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.sendFile(indexPath);
     } else {
-      res.status(404).json({ message: "Not found. Client not built." });
+      res.status(404).json({ message: "Client not built. Static files not found at: " + distPath });
     }
   });
 }
+
 
